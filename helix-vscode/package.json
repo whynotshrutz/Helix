@@ -1,0 +1,190 @@
+{
+  "name": "helix-ai-standalone",
+  "displayName": "Helix AI Assistant (Standalone)",
+  "description": "Multi-agent AI development assistant powered by NVIDIA NIM and AgentOS - No Copilot required",
+  "version": "2.0.0",
+  "publisher": "helix",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/helix"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "AI",
+    "Programming Languages",
+    "Snippets",
+    "Testing"
+  ],
+  "keywords": [
+    "ai",
+    "agent",
+    "nvidia",
+    "code generation",
+    "multi-agent",
+    "standalone"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension-standalone.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "helix-ai",
+          "title": "Helix AI",
+          "icon": "$(robot)"
+        }
+      ]
+    },
+    "views": {
+      "helix-ai": [
+        {
+          "id": "helix-agents",
+          "name": "Agents",
+          "icon": "$(list-unordered)",
+          "contextualTitle": "Helix AI Agents"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "helix.openChat",
+        "title": "Open Chat",
+        "category": "Helix",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "helix.selectAgent",
+        "title": "Select Agent",
+        "category": "Helix",
+        "icon": "$(account)"
+      },
+      {
+        "command": "helix.chatWithPlanner",
+        "title": "Chat with Planner",
+        "category": "Helix"
+      },
+      {
+        "command": "helix.chatWithCoder",
+        "title": "Chat with Coder",
+        "category": "Helix"
+      },
+      {
+        "command": "helix.chatWithTester",
+        "title": "Chat with Tester",
+        "category": "Helix"
+      },
+      {
+        "command": "helix.chatWithReviewer",
+        "title": "Chat with Reviewer",
+        "category": "Helix"
+      },
+      {
+        "command": "helix.chatWithExplainer",
+        "title": "Chat with Explainer",
+        "category": "Helix"
+      },
+      {
+        "command": "helix.startServer",
+        "title": "Start AgentOS Server",
+        "category": "Helix",
+        "icon": "$(play)"
+      },
+      {
+        "command": "helix.stopServer",
+        "title": "Stop AgentOS Server",
+        "category": "Helix",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "helix.checkServer",
+        "title": "Check Server Status",
+        "category": "Helix",
+        "icon": "$(pulse)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "helix.openChat"
+        },
+        {
+          "command": "helix.selectAgent"
+        },
+        {
+          "command": "helix.chatWithPlanner"
+        },
+        {
+          "command": "helix.chatWithCoder"
+        },
+        {
+          "command": "helix.chatWithTester"
+        },
+        {
+          "command": "helix.chatWithReviewer"
+        },
+        {
+          "command": "helix.chatWithExplainer"
+        },
+        {
+          "command": "helix.startServer"
+        },
+        {
+          "command": "helix.stopServer"
+        },
+        {
+          "command": "helix.checkServer"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "helix.openChat",
+          "when": "view == helix-agents",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Helix AI",
+      "properties": {
+        "helix.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:7777",
+          "description": "URL of the Helix AgentOS server"
+        },
+        "helix.autoStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically start the AgentOS server when VS Code starts"
+        },
+        "helix.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "Path to Python executable for running AgentOS"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^18.x",
+    "@types/vscode": "^1.75.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vscode/vsce": "^2.22.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.2"
+  }
+}

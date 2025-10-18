@@ -1,0 +1,800 @@
+"""Multi-agent system for Helix - Agno-based agents."""
+
+import json
+from pathlib import Path
+from typing import Dict, List, Any, Optional
+from datetime import datetime
+from dataclasses import dataclass, asdict
+
+from helix.providers import ProviderRegistry
+from helix.config import Config
+from helix.utils import run_command, safe_write_file, FileTree
+from helix.gitops import GitOpsAgent
+
+
+@dataclass
+class Task:
+    """Represents a coding task."""
+    task_id: str
+    description: str
+    files_to_create: List[str]
+    files_to_modify: List[str]
+    test_requirements: str
+    priority: int
+    status: str = "pending"  # pending, in_progress, completed, failed
+
+
+@dataclass
+class TaskSpec:
+    """Complete specification from Planner."""
+    tasks: List[Task]
+    branch_name: str
+    test_coverage_baseline: float
+    project_context: Dict[str, Any]
+
+
+class PlannerAgent:
+    """
+    Planner Agent: Parses natural language prompts and creates execution plans.
+    
+    Responsibilities:
+    - Parse user prompt
+    - Analyze repository state
+    - Create task list with priorities
+    - Define test coverage requirements
+    - Generate branch name
+    """
+    
+    def __init__(self, config: Config):
+        self.config = config
+        self.llm = None
+    
+    def initialize_llm(self):
+        """Initialize LLM client lazily."""
+        if self.llm is None:
+            provider = self.config.get_provider()
+            model = self.config.get_model()
+            
+            options = {}
+            if provider == "nvidia_nim":
+                options["api_key"] = self.config.nim_api_key
+                options["base_url"] = self.config.nim_base_url
+            
+            self.llm = ProviderRegistry.get_llm(provider, model, options)
+    
+    def plan(self, user_prompt: str, repo_state: Dict[str, Any]) -> TaskSpec:
+        """
+        Create execution plan from user prompt.
+        
+        Args:
+            user_prompt: Natural language description of desired changes
+            repo_state: Current repository state (file tree, existing code, etc.)
+            
+        Returns:
+            TaskSpec with complete plan
+        """
+        self.initialize_llm()
+        
+        # Build planning prompt
+        planning_prompt = self._build_planning_prompt(user_prompt, repo_state)
+        
+        # Get LLM response
+        try:
+            response = self.llm.generate(planning_prompt, max_tokens=2048, temperature=0.3)
+            plan_text = response.text
+        except Exception as e:
+            # Fallback to simple plan
+            print(f"⚠️  LLM planning failed ({e}), using fallback plan")
+            plan_text = self._create_fallback_plan(user_prompt)
+        
+        # Parse plan into TaskSpec
+        task_spec = self._parse_plan(plan_text, user_prompt)
+        
+        return task_spec
+    
+    def _build_planning_prompt(self, user_prompt: str, repo_state: Dict[str, Any]) -> str:
+        """Build prompt for LLM-based planning."""
+        file_tree = repo_state.get("file_tree", "")
+        
+        return f"""You are a software planning agent. Analyze the following request and create an execution plan.
+
+USER REQUEST:
+{user_prompt}
+
+CURRENT REPOSITORY STATE:
+{file_tree}
+
+Create a detailed plan with the following JSON structure:
+{{
+  "tasks": [
+    {{
+      "task_id": "task_1",
+      "description": "Clear description of what to do",
+      "files_to_create": ["path/to/new/file.py"],
+      "files_to_modify": ["path/to/existing/file.py"],
+      "test_requirements": "What tests are needed",
+      "priority": 1
+    }}
+  ],
+  "test_coverage_baseline": 80.0,
+  "reasoning": "Why this plan makes sense"
+}}
+
+Respond with ONLY the JSON, no additional text."""
+    
+    def _create_fallback_plan(self, user_prompt: str) -> str:
+        """Create a simple fallback plan."""
+        return json.dumps({
+            "tasks": [{
+                "task_id": "task_1",
+                "description": user_prompt,
+                "files_to_create": [],
+                "files_to_modify": [],
+                "test_requirements": "Basic unit tests",
+                "priority": 1
+            }],
+            "test_coverage_baseline": 70.0,
+            "reasoning": "Fallback plan"
+        })
+    
+    def _parse_plan(self, plan_text: str, user_prompt: str) -> TaskSpec:
+        """Parse LLM response into TaskSpec."""
+        try:
+            # Extract JSON from response (handle markdown code blocks)
+            if "```json" in plan_text:
+                plan_text = plan_text.split("```json")[1].split("```")[0]
+            elif "```" in plan_text:
+                plan_text = plan_text.split("```")[1].split("```")[0]
+            
+            plan_data = json.loads(plan_text.strip())
+            
+            tasks = []
+            for task_data in plan_data.get("tasks", []):
+                tasks.append(Task(
+                    task_id=task_data["task_id"],
+                    description=task_data["description"],
+                    files_to_create=task_data.get("files_to_create", []),
+                    files_to_modify=task_data.get("files_to_modify", []),
+                    test_requirements=task_data.get("test_requirements", ""),
+                    priority=task_data.get("priority", 1)
+                ))
+            
+            from helix.utils import generate_branch_name
+            branch_name = generate_branch_name(user_prompt)
+            
+            return TaskSpec(
+                tasks=tasks,
+                branch_name=branch_name,
+                test_coverage_baseline=plan_data.get("test_coverage_baseline", 70.0),
+                project_context={
+                    "user_prompt": user_prompt,
+                    "reasoning": plan_data.get("reasoning", "")
+                }
+            )
+            
+        except Exception as e:
+            # Fallback to single task
+            print(f"⚠️  Failed to parse plan: {e}")
+            from helix.utils import generate_branch_name
+            return TaskSpec(
+                tasks=[Task(
+                    task_id="task_1",
+                    description=user_prompt,
+                    files_to_create=[],
+                    files_to_modify=[],
+                    test_requirements="Basic tests",
+                    priority=1
+                )],
+                branch_name=generate_branch_name(user_prompt),
+                test_coverage_baseline=70.0,
+                project_context={"user_prompt": user_prompt}
+            )
+
+
+class CoderAgent:
+    """
+    Coder Agent: Generates code according to plan.
+    
+    Responsibilities:
+    - Generate new code files
+    - Modify existing files
+    - Add docstrings and comments
+    - Create minimal tests
+    - Update README if needed
+    """
+    
+    def __init__(self, config: Config):
+        self.config = config
+        self.llm = None
+    
+    def initialize_llm(self):
+        """Initialize LLM client lazily."""
+        if self.llm is None:
+            provider = self.config.get_provider()
+            model = self.config.get_model()
+            
+            options = {}
+            if provider == "nvidia_nim":
+                options["api_key"] = self.config.nim_api_key
+                options["base_url"] = self.config.nim_base_url
+            
+            self.llm = ProviderRegistry.get_llm(provider, model, options)
+    
+    def execute_task(self, task: Task, workspace: Path) -> Dict[str, Any]:
+        """
+        Execute a single coding task.
+        
+        Returns:
+            Dictionary with generated/modified files and their content
+        """
+        self.initialize_llm()
+        
+        results = {
+            "files_created": [],
+            "files_modified": [],
+            "content": {}
+        }
+        
+        # Generate code for new files
+        for filepath in task.files_to_create:
+            content = self._generate_file(filepath, task.description, workspace)
+            full_path = workspace / filepath
+            safe_write_file(full_path, content, backup=False)
+            results["files_created"].append(filepath)
+            results["content"][filepath] = content
+        
+        # Modify existing files
+        for filepath in task.files_to_modify:
+            content = self._modify_file(filepath, task.description, workspace)
+            if content:
+                full_path = workspace / filepath
+                safe_write_file(full_path, content, backup=True)
+                results["files_modified"].append(filepath)
+                results["content"][filepath] = content
+        
+        return results
+    
+    def _generate_file(self, filepath: str, description: str, workspace: Path) -> str:
+        """Generate content for a new file."""
+        prompt = f"""Generate a Python file for: {filepath}
+
+Requirements:
+{description}
+
+Generate complete, production-ready code with:
+- Proper imports
+- Docstrings for all functions/classes
+- Type hints
+- Error handling
+- Comments where needed
+
+Output ONLY the Python code, no explanations."""
+        
+        try:
+            response = self.llm.generate(prompt, max_tokens=2048, temperature=0.2)
+            code = response.text
+            
+            # Clean up code block markers
+            if "```python" in code:
+                code = code.split("```python")[1].split("```")[0]
+            elif "```" in code:
+                code = code.split("```")[1].split("```")[0]
+            
+            return code.strip()
+        except Exception as e:
+            print(f"⚠️  Code generation failed for {filepath}: {e}")
+            return f'"""TODO: Implement {filepath}
+{description}
+"""'
+    
+    def _modify_file(self, filepath: str, description: str, workspace: Path) -> Optional[str]:
+        """Modify an existing file."""
+        full_path = workspace / filepath
+        
+        if not full_path.exists():
+            print(f"⚠️  File does not exist: {filepath}")
+            return None
+        
+        original_content = full_path.read_text()
+        
+        prompt = f"""Modify the following Python file according to requirements.
+
+FILE: {filepath}
+
+ORIGINAL CONTENT:
+```python
+{original_content}
+MODIFICATIONS NEEDED:
+{description}
+Generate the COMPLETE modified file with all changes applied.
+Output ONLY the Python code, no explanations."""
+    try:
+        response = self.llm.generate(prompt, max_tokens=4096, temperature=0.2)
+        code = response.text
+        
+        # Clean up code block markers
+        if "```python" in code:
+            code = code.split("```python")[1].split("```")[0]
+        elif "```" in code:
+            code = code.split("```")[1].split("```")[0]
+        
+        return code.strip()
+    except Exception as e:
+        print(f"⚠️  File modification failed for {filepath}: {e}")
+        return None
+
+class TesterAgent:
+"""
+Tester Agent: Runs tests and static analysis.
+Responsibilities:
+- Run unit tests (pytest)
+- Run static analysis (mypy, flake8, bandit)
+- Generate test reports
+- Calculate coverage
+"""
+
+def __init__(self, config: Config):
+    self.config = config
+
+def run_tests(self, workspace: Path) -> Dict[str, Any]:
+    """
+    Run complete test suite.
+    
+    Returns:
+        Test report dictionary
+    """
+    report = {
+        "timestamp": datetime.now().isoformat(),
+        "tests_run": 0,
+        "passed": 0,
+        "failed": 0,
+        "errors": [],
+        "coverage": None,
+        "static_checks": {}
+    }
+    
+    # Run pytest
+    if self.config.run_tests_before_push:
+        pytest_result = self._run_pytest(workspace)
+        report.update(pytest_result)
+    
+    # Run static checks
+    if self.config.run_static_checks:
+        report["static_checks"] = {
+            "mypy": self._run_mypy(workspace),
+            "flake8": self._run_flake8(workspace),
+            "bandit": self._run_bandit(workspace)
+        }
+    
+    # Determine overall success
+    report["success"] = (
+        report["failed"] == 0 and
+        all(check.get("passed", False) for check in report["static_checks"].values())
+    )
+    
+    return report
+
+def _run_pytest(self, workspace: Path) -> Dict[str, Any]:
+    """Run pytest."""
+    code, stdout, stderr = run_command(
+        ["pytest", "-v", "--tb=short", "--cov=.", "--cov-report=term"],
+        cwd=workspace,
+        timeout=300
+    )
+    
+    # Parse output (simplified)
+    lines = stdout.split('
+
+') + stderr.split('
+')
+    tests_run = 0
+    passed = 0
+    failed = 0
+    
+    for line in lines:
+        if " passed" in line:
+            try:
+                passed = int(line.split()[0])
+                tests_run += passed
+            except:
+                pass
+        if " failed" in line:
+            try:
+                failed = int(line.split()[0])
+                tests_run += failed
+            except:
+                pass
+    
+    return {
+        "tests_run": tests_run,
+        "passed": passed,
+        "failed": failed,
+        "pytest_output": stdout if code == 0 else stderr
+    }
+
+def _run_mypy(self, workspace: Path) -> Dict[str, Any]:
+    """Run mypy static type checking."""
+    code, stdout, stderr = run_command(
+        ["mypy", ".", "--ignore-missing-imports"],
+        cwd=workspace
+    )
+    
+    return {
+        "passed": code == 0,
+        "output": stdout if code == 0 else stderr
+    }
+
+def _run_flake8(self, workspace: Path) -> Dict[str, Any]:
+    """Run flake8 linting."""
+    code, stdout, stderr = run_command(
+        ["flake8", ".", "--max-line-length=120", "--extend-ignore=E203,W503"],
+        cwd=workspace
+    )
+    
+    return {
+        "passed": code == 0,
+        "output": stdout if code == 0 else stderr
+    }
+
+def _run_bandit(self, workspace: Path) -> Dict[str, Any]:
+            """Run bandit security checks."""
+        code, stdout, stderr = run_command(
+            ["bandit", "-r", ".", "-f", "json"],
+            cwd=workspace
+        )
+        
+        try:
+            if stdout:
+                bandit_data = json.loads(stdout)
+                issues = len(bandit_data.get("results", []))
+                return {
+                    "passed": issues == 0,
+                    "issues_found": issues,
+                    "output": json.dumps(bandit_data, indent=2)
+                }
+        except:
+            pass
+        
+        return {
+            "passed": code == 0,
+            "output": stdout if code == 0 else stderr
+        }
+
+
+class ExplainerAgent:
+    """
+    Explainer Agent: Generates human-readable explanations.
+    
+    Responsibilities:
+    - Explain what the code does
+    - Generate run commands
+    - Create file map
+    - Suggest next steps
+    """
+    
+    def __init__(self, config: Config):
+        self.config = config
+        self.llm = None
+    
+    def initialize_llm(self):
+        """Initialize LLM client lazily."""
+        if self.llm is None:
+            provider = self.config.get_provider()
+            model = self.config.get_model()
+            
+            options = {}
+            if provider == "nvidia_nim":
+                options["api_key"] = self.config.nim_api_key
+                options["base_url"] = self.config.nim_base_url
+            
+            self.llm = ProviderRegistry.get_llm(provider, model, options)
+    
+    def explain(
+        self,
+        task_spec: TaskSpec,
+        code_results: Dict[str, Any],
+        test_report: Dict[str, Any],
+        workspace: Path
+    ) -> Dict[str, str]:
+        """
+        Generate comprehensive explanation of changes.
+        
+        Returns:
+            Dictionary with explanation, commands, and file map
+        """
+        self.initialize_llm()
+        
+        # Generate file tree
+        file_tree = FileTree.generate(workspace, max_depth=3)
+        
+        # Create explanation
+        explanation = self._generate_explanation(task_spec, code_results, test_report)
+        
+        # Generate run commands
+        run_commands = self._generate_run_commands(code_results, workspace)
+        
+        # Create change list
+        changelist = self._generate_changelist(code_results)
+        
+        # Suggest next steps
+        next_steps = self._suggest_next_steps(task_spec, test_report)
+        
+        return {
+            "explanation": explanation,
+            "run_commands": run_commands,
+            "changelist": changelist,
+            "next_steps": next_steps,
+            "file_tree": file_tree
+        }
+    
+    def _generate_explanation(
+        self,
+        task_spec: TaskSpec,
+        code_results: Dict[str, Any],
+        test_report: Dict[str, Any]
+    ) -> str:
+        """Generate plain-language explanation."""
+        files_created = code_results.get("files_created", [])
+        files_modified = code_results.get("files_modified", [])
+        
+        prompt = f"""Generate a clear, non-technical explanation of the following code changes.
+
+ORIGINAL REQUEST:
+{task_spec.project_context.get('user_prompt', 'N/A')}
+
+CHANGES MADE:
+- Created {len(files_created)} new files: {', '.join(files_created)}
+- Modified {len(files_modified)} files: {', '.join(files_modified)}
+
+TEST RESULTS:
+- Tests run: {test_report.get('tests_run', 0)}
+- Passed: {test_report.get('passed', 0)}
+- Failed: {test_report.get('failed', 0)}
+
+Write a brief explanation (3-5 sentences) that describes:
+1. What functionality was added or changed
+2. How the components work together
+3. What the user can now do
+
+Use plain language, avoid technical jargon."""
+        
+        try:
+            response = self.llm.generate(prompt, max_tokens=512, temperature=0.5)
+            return response.text.strip()
+        except Exception as e:
+            print(f"⚠️  Explanation generation failed: {e}")
+            return f"Created {len(files_created)} files and modified {len(files_modified)} files as requested."
+    
+    def _generate_run_commands(self, code_results: Dict[str, Any], workspace: Path) -> str:
+        """Generate shell commands to run the code."""
+        commands = [
+            "# Commands to run the generated code",
+            "",
+            "# 1. Install dependencies (if requirements.txt exists)",
+            "pip install -r requirements.txt",
+            "",
+            "# 2. Run tests",
+            "pytest -v",
+            "",
+        ]
+        
+        # Check for main entry point
+        if "helix/__main__.py" in code_results.get("files_created", []):
+            commands.extend([
+                "# 3. Run the application",
+                "python -m helix",
+                ""
+            ])
+        
+        return "
+".join(commands)
+    
+    def _generate_changelist(self, code_results: Dict[str, Any]) -> str:
+        """Generate detailed change list."""
+        lines = ["# Changes Made
+"]
+        
+        files_created = code_results.get("files_created", [])
+        files_modified = code_results.get("files_modified", [])
+        
+        if files_created:
+            lines.append("## New Files
+")
+            for filepath in files_created:
+                lines.append(f"- `{filepath}` - newly created")
+            lines.append("")
+        
+        if files_modified:
+            lines.append("## Modified Files
+")
+            for filepath in files_modified:
+                lines.append(f"- `{filepath}` - updated")
+            lines.append("")
+        
+        return "
+".join(lines)
+    
+    def _suggest_next_steps(self, task_spec: TaskSpec, test_report: Dict[str, Any]) -> str:
+        """Suggest next steps for the user."""
+        steps = ["# Suggested Next Steps
+"]
+        
+        if test_report.get("failed", 0) > 0:
+            steps.append("1. ⚠️  Fix failing tests before deploying")
+        else:
+            steps.append("1. ✅ Tests passing - ready for review")
+        
+        steps.append("2. Review the generated code for accuracy")
+        steps.append("3. Test the functionality manually")
+        steps.append("4. Deploy to staging environment")
+        steps.append("5. Monitor for any issues")
+        
+        return "
+".join(steps)
+    
+    def save_artifacts(self, explanations: Dict[str, str], output_dir: Path) -> None:
+        """Save explanation artifacts to disk."""
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Save explanation
+        (output_dir / "explanation.md").write_text(explanations["explanation"])
+        
+        # Save run commands
+        (output_dir / "run_commands.sh").write_text(explanations["run_commands"])
+        
+        # Save changelist
+        (output_dir / "changelist.txt").write_text(explanations["changelist"])
+        
+        # Save next steps
+        (output_dir / "next_steps.md").write_text(explanations["next_steps"])
+        
+        # Save file tree
+        (output_dir / "file_tree.txt").write_text(explanations["file_tree"])
+        
+        print(f"✅ Explanation artifacts saved to: {output_dir}")
+
+
+class HelixOrchestrator:
+    """Main orchestrator coordinating all agents."""
+    
+    def __init__(self, config: Config):
+        self.config = config
+        self.planner = PlannerAgent(config)
+        self.coder = CoderAgent(config)
+        self.tester = TesterAgent(config)
+        self.explainer = ExplainerAgent(config)
+        
+        # GitOps agent
+        github_token = config.gh_token or config.gh_oauth_token
+        self.gitops = GitOpsAgent(
+            repo_path=config.workspace_dir,
+            github_token=github_token,
+            require_confirmation=config.require_human_confirmation
+        ) if github_token else None
+    
+    def execute(self, user_prompt: str) -> Dict[str, Any]:
+        """
+        Execute complete workflow: Plan -> Code -> Test -> GitOps -> Explain
+        
+        Returns:
+            Results dictionary
+        """
+        print(f"🚀 Helix Multi-Agent System Starting")
+        print(f"📝 Prompt: {user_prompt}
+")
+        
+        results = {
+            "success": False,
+            "plan": None,
+            "code_results": {},
+            "test_report": {},
+            "gitops_result": {},
+            "explanations": {}
+        }
+        
+        # Step 1: Planning
+        print("🧠 Planning...")
+        repo_state = {
+            "file_tree": FileTree.generate(self.config.workspace_dir)
+        }
+        task_spec = self.planner.plan(user_prompt, repo_state)
+        results["plan"] = asdict(task_spec)
+        print(f"   ✓ Created {len(task_spec.tasks)} tasks")
+        
+        # Step 2: Coding
+        print("
+💻 Coding...")
+        all_files_created = []
+        all_files_modified = []
+        
+        for task in task_spec.tasks:
+            print(f"   → {task.description}")
+            code_result = self.coder.execute_task(task, self.config.workspace_dir)
+            all_files_created.extend(code_result["files_created"])
+            all_files_modified.extend(code_result["files_modified"])
+            results["code_results"][task.task_id] = code_result
+        
+        print(f"   ✓ Created {len(all_files_created)} files")
+        print(f"   ✓ Modified {len(all_files_modified)} files")
+        
+        # Step 3: Testing
+        print("
+🧪 Testing...")
+        test_report = self.tester.run_tests(self.config.workspace_dir)
+        results["test_report"] = test_report
+        
+        if test_report.get("success"):
+            print(f"   ✓ All tests passed ({test_report.get('passed', 0)}/{test_report.get('tests_run', 0)})")
+        else:
+            print(f"   ⚠️  {test_report.get('failed', 0)} tests failed")
+        
+        # Check if we should proceed with push
+        should_push = (
+            self.config.auto_push and
+            (test_report.get("success") or not self.config.fail_on_test_failure)
+        )
+        
+        # Step 4: GitOps
+        if should_push and self.gitops:
+            print("
+📤 Pushing to GitHub...")
+            all_changed_files = [
+                Path(f) for f in (all_files_created + all_files_modified)
+            ]
+            
+            gitops_result = self.gitops.execute_push_workflow(
+                files=all_changed_files,
+                task_summary=user_prompt,
+                branch_name=task_spec.branch_name,
+                planner_id=task_spec.tasks[0].task_id if task_spec.tasks else None,
+                create_pr=self.config.create_pr,
+                test_report=test_report
+            )
+            results["gitops_result"] = gitops_result
+            
+            if gitops_result.get("success"):
+                print(f"   ✓ Pushed to branch: {gitops_result['branch']}")
+                if gitops_result.get("pr_url"):
+                    print(f"   ✓ PR created: {gitops_result['pr_url']}")
+            else:
+                print(f"   ⚠️  Push failed: {gitops_result.get('issues')}")
+        else:
+            if not self.config.auto_push:
+                print("
+⏸️  Auto-push disabled")
+            elif not self.gitops:
+                print("
+⏸️  No GitHub token configured")
+            else:
+                print("
+⏸️  Skipping push due to test failures")
+        
+        # Step 5: Explanation
+        print("
+📖 Generating explanation...")
+        explanations = self.explainer.explain(
+            task_spec=task_spec,
+            code_results={"files_created": all_files_created, "files_modified": all_files_modified},
+            test_report=test_report,
+            workspace=self.config.workspace_dir
+        )
+        results["explanations"] = explanations
+        
+        # Save explanation artifacts
+        output_dir = self.config.workspace_dir / ".helix" / "outputs"
+        self.explainer.save_artifacts(explanations, output_dir)
+        
+        print(f"   ✓ Explanation saved to: {output_dir}")
+        
+        # Summary
+        print("
+" + "=" * 60)
+        print("📊 SUMMARY")
+        print("=" * 60)
+        print(explanations["explanation"])
+        print("
+" + explanations["next_steps"])
+        
+        results["success"] = True
+        return results

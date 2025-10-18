@@ -1,0 +1,213 @@
+{
+  "name": "helix-ai",
+  "displayName": "Helix AI Assistant",
+  "description": "Multi-agent AI development assistant powered by NVIDIA NIM and AgentOS",
+  "version": "1.0.0",
+  "publisher": "helix",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/helix"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Programming Languages",
+    "Snippets",
+    "Testing"
+  ],
+  "keywords": [
+    "ai",
+    "copilot",
+    "agent",
+    "nvidia",
+    "code generation",
+    "multi-agent"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "chatParticipants": [
+      {
+        "id": "helix.planner",
+        "name": "helix-planner",
+        "description": "Analyzes prompts and creates execution plans",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "plan",
+            "description": "Create a detailed execution plan"
+          },
+          {
+            "name": "analyze",
+            "description": "Analyze project structure"
+          }
+        ]
+      },
+      {
+        "id": "helix.coder",
+        "name": "helix-coder",
+        "description": "Generates and modifies code",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "create",
+            "description": "Create new files"
+          },
+          {
+            "name": "edit",
+            "description": "Edit existing files"
+          },
+          {
+            "name": "refactor",
+            "description": "Refactor code"
+          }
+        ]
+      },
+      {
+        "id": "helix.tester",
+        "name": "helix-tester",
+        "description": "Creates and runs tests",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "test",
+            "description": "Run tests"
+          },
+          {
+            "name": "coverage",
+            "description": "Check test coverage"
+          }
+        ]
+      },
+      {
+        "id": "helix.reviewer",
+        "name": "helix-reviewer",
+        "description": "Reviews code changes and ensures quality",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "review",
+            "description": "Review code changes"
+          },
+          {
+            "name": "security",
+            "description": "Security audit"
+          }
+        ]
+      },
+      {
+        "id": "helix.explainer",
+        "name": "helix-explainer",
+        "description": "Generates human-readable explanations",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "explain",
+            "description": "Explain code or changes"
+          },
+          {
+            "name": "document",
+            "description": "Generate documentation"
+          }
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "helix.startServer",
+        "title": "Helix: Start AgentOS Server"
+      },
+      {
+        "command": "helix.stopServer",
+        "title": "Helix: Stop AgentOS Server"
+      },
+      {
+        "command": "helix.showPreview",
+        "title": "Helix: Show Preview"
+      },
+      {
+        "command": "helix.runWorkflow",
+        "title": "Helix: Run Complete Workflow"
+      },
+      {
+        "command": "helix.selectAgent",
+        "title": "Helix: Select Agent"
+      }
+    ],
+    "configuration": {
+      "title": "Helix AI",
+      "properties": {
+        "helix.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:7777",
+          "description": "AgentOS server URL"
+        },
+        "helix.autoStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically start AgentOS server on activation"
+        },
+        "helix.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "Path to Python executable for running Helix"
+        },
+        "helix.workspaceRoot": {
+          "type": "string",
+          "default": "${workspaceFolder}",
+          "description": "Root directory for Helix operations"
+        },
+        "helix.enablePreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable live preview mode (like Lovable)"
+        }
+      }
+    },
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "helix-preview",
+          "title": "Helix Preview",
+          "icon": "media/preview-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "helix-preview": [
+        {
+          "type": "webview",
+          "id": "helix.preview",
+          "name": "Live Preview"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.90.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.2"
+  }
+}
