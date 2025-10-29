@@ -1,0 +1,60 @@
+# Docker ignore patterns
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Test and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Database files
+*.db
+
+# Documentation (build artifacts only, not source)
+*.md
+
+# Logs
+*.log
+
+# VS Code extension build
+helix-vscode/node_modules/
+helix-vscode/out/
+helix-vscode/*.vsix
+
+# Agent UI build
+agent-ui/node_modules/
+agent-ui/.next/
+agent-ui/dist/
+
+# Temporary files
+tmp/
+*.tmp
+
+# System files
+.DS_Store
+Thumbs.db

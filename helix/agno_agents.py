@@ -8,17 +8,29 @@ try:
     from agno.agent import Agent
     from agno.os import AgentOS
     from agno.db.sqlite import SqliteDb
-    from agno.tools.mcp import MCPTools
-    from agno.tools import tool
     from agno.models.anthropic import Claude
     from agno.models.openai import OpenAIChat
     from agno.models.nvidia import Nvidia  # Use dedicated NVIDIA model class
+    from agno.tools import tool
     
     AGNO_AVAILABLE = True
-except ImportError:
+except ImportError as e:
+    print(f"Warning: Agno core import failed: {e}")
     AGNO_AVAILABLE = False
     Agent = None
     AgentOS = None
+    # Define a dummy tool decorator if import fails
+    def tool(func):
+        return func
+
+# Try to import MCP separately (it's optional)
+try:
+    from agno.tools.mcp import MCPTools
+    MCP_AVAILABLE = True
+except ImportError as e:
+    print(f"Info: MCP tools not available: {e}")
+    MCP_AVAILABLE = False
+    MCPTools = None
 
 from helix.config import Config
 from helix.providers import ProviderRegistry
