@@ -208,7 +208,7 @@ class GitHubOperations:
             "body": body
         }
         
-        response = requests.post(url, headers=self.auth.get_headers(), json=data)
+        response = requests.post(url, headers=self.auth.get_headers(), json=data, timeout=30)
         
         if response.status_code not in (200, 201):
             raise GitOpsError(f"Failed to create PR: {response.text}")
@@ -218,7 +218,7 @@ class GitHubOperations:
     def get_repository_info(self) -> Dict[str, Any]:
         """Get repository information."""
         url = f"{self.base_url}/repos/{self.owner}/{self.repo}"
-        response = requests.get(url, headers=self.auth.get_headers())
+        response = requests.get(url, headers=self.auth.get_headers(), timeout=30)
         
         if response.status_code != 200:
             raise GitOpsError(f"Failed to get repo info: {response.text}")
