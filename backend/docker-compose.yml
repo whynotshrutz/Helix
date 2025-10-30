@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  # Code execution sandbox
+  code-executor:
+    build:
+      context: ./docker/code-executor
+      dockerfile: Dockerfile
+    container_name: helix-executor
+    ports:
+      - "8888:8888"
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    networks:
+      - helix-net
+
+  # Main backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: helix-backend
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    environment:
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY}
+      - AGNO_API_KEY=${AGNO_API_KEY}
+      - NIM_BASE_URL=${NIM_BASE_URL:-http://localhost:8001}
+      - NIM_EMBEDDING_URL=${NIM_EMBEDDING_URL:-http://localhost:8002}
+      - CHROMA_PERSIST_DIR=/data/chroma
+      - CODE_EXECUTOR_URL=http://code-executor:8888
+      - FASTMCP_BIND_HOST=0.0.0.0
+      - FASTMCP_BIND_PORT=8000
+    volumes:
+      - ./tmp:/data
+      - ./workspace:/workspace:ro
+    depends_on:
+      - code-executor
+    networks:
+      - helix-net
+
+networks:
+  helix-net:
+    driver: bridge

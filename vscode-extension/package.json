@@ -1,0 +1,36 @@
+{
+  "name": "helix-mcp-client",
+  "displayName": "Helix MCP Client",
+  "description": "AI code assistant with FastMCP, Agno AI, and NVIDIA NIM",
+  "version": "0.1.0",
+  "publisher": "helix-dev",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "tsc -p ./",
+    "watch": "tsc -w -p ./"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.70.0"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "helixMcp.chat",
+        "title": "Helix MCP: Chat"
+      },
+      {
+        "command": "helixMcp.inlineSuggest",
+        "title": "Helix MCP: Inline Suggest"
+      }
+    ]
+  }
+}
