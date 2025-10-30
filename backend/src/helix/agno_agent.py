@@ -243,25 +243,25 @@ def create_agent(
         name=name,
         model=model,
         knowledge=knowledge,  # Enable RAG with NVIDIA embeddings
-        search_knowledge=True,  # Automatically search knowledge base for context
+        search_knowledge=False,  # Disable auto-search to avoid empty message bug
         # tools=tools,  # Tools disabled to avoid empty message bug
         markdown=False,
         instructions=[
-            "You are Helix, an AI coding assistant with RAG capabilities.",
-            "You have access to a knowledge base with code context from the workspace.",
-            "Use the knowledge base to provide better, context-aware suggestions.",
+            "You are Helix, an AI coding assistant powered by NVIDIA NIM.",
+            "You have access to a knowledge base with indexed workspace code.",
             "INLINE MODE: If the prompt says 'Complete the following' or 'Complete this line':",
             "- Return ONLY the code completion, no explanations, no markdown",
             "- Continue naturally from where the code left off",
-            "- Use workspace context from knowledge base when relevant",
+            "- Keep completions concise and contextually relevant",
             "CHAT MODE: When asked to write, create, or generate complete files:",
-            "- Search knowledge base for relevant code patterns and context",
+            "- Analyze the request and provide helpful code suggestions",
             "- Output in this exact format:",
             "  CREATE_FILE: filename.ext",
             "  ```language",
             "  code here",
             "  ```",
             "Always generate idiomatic, clean code with comments.",
+            "Be concise and helpful in your responses.",
         ],
         description="AI coding assistant with RAG"
     )
