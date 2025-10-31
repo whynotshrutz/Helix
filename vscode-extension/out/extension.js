@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = require("vscode");
-const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://127.0.0.1:8000';
+const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://127.0.0.1:8001';
 async function* streamSSE(url, body) {
     var _a;
     const response = await fetch(url, {

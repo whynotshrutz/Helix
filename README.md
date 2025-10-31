@@ -1,16 +1,51 @@
-# Helix — Agentic AI Code Assistant
+# Helix — Autonomous AI Code Orchestrator ✨
 
-A production-ready AI code assistant built with FastMCP, Agno AI, NVIDIA NIM, and ChromaDB. Integrates seamlessly into VS Code as an MCP client with streaming support.
+A **fully autonomous** AI coding assistant powered by Agno AI, NVIDIA NIM, and ChromaDB. Features real-time web search, GitHub automation, deep semantic analysis, and intelligent safety confirmations. Integrates seamlessly into VS Code.
 
-## Features
+## 🚀 What Makes Helix Unique?
 
-- 🤖 **Agno AI Agent** — Multi-step reasoning, tool orchestration, session management
+### Fully Autonomous Operations
+- **Proactive**: Suggests improvements without being asked
+- **Chained Workflows**: Analyze → Fix → Commit → Push → Create PR
+- **Context-Aware**: Learns from your codebase patterns
+- **Safety-First**: Asks before destructive operations (first time only)
+
+### 4 Core Autonomous Features
+
+#### 1. 🔒 Interactive Confirmation Layer
+- Smart session management with 4 safety modes
+- Asks once per session for file operations
+- Tracks confirmed operations across sessions
+- Prevents accidental destructive changes
+
+#### 2. 🔍 Enhanced Semantic Analysis  
+- AST-based dependency graph construction
+- Detects circular dependencies & unused imports
+- Scans for 8 types of security vulnerabilities
+- Calculates code complexity metrics
+- Generates actionable architecture recommendations
+
+#### 3. 🌐 Real-Time Web Intelligence
+- Dual provider support: Tavily (general) + Exa (technical docs)
+- Smart caching with 24-hour TTL
+- Specialized searches: docs, errors, best practices
+- Integrates latest API documentation automatically
+
+#### 4. 🔧 Full GitHub Automation
+- Complete git workflow (commit, push, branch, PR)
+- GitHub REST API integration (issues, PRs, repos)
+- Automated pull request creation with descriptions
+- Branch management and status tracking
+
+## 🎯 Core Capabilities
+
+- 🤖 **Agno AI Agent** — 12 powerful tools with autonomous orchestration
 - ⚡ **NVIDIA NIM** — High-performance LLM inference with `llama-3.1-nemotron-nano-8b-v1`
 - 🔍 **RAG with ChromaDB** — Retrieval-augmented generation for code context
 - 🐳 **Docker Sandbox** — Secure code execution with resource limits
 - 💬 **Streaming Support** — Real-time SSE streaming to VS Code
 - 📝 **Session Memory** — Persistent conversation history and context
-- 🛠️ **Rich Toolset** — File reading, code search, execution, documentation
+- 🛠️ **Rich Toolset** — 12 tools including analysis, search, git, and more
 
 ## Architecture
 
@@ -157,12 +192,46 @@ Edit `backend/.env`:
 # Required
 NVIDIA_API_KEY=nvapi-xxx
 
-# Optional
+# Optional - Core Settings
 NVIDIA_MODEL_ID=meta/llama-3.1-nemotron-nano-8b-v1
 NIM_BASE_URL=http://localhost:8001
 CHROMA_PERSIST_DIR=./tmp/chroma
 CODE_EXECUTOR_URL=http://localhost:8888
+
+# Optional - Autonomous Features
+# Web Search (pick one or both)
+TAVILY_API_KEY=tvly-xxx          # Get at https://tavily.com
+EXA_API_KEY=exa-xxx              # Get at https://exa.ai
+
+# GitHub Automation
+GITHUB_TOKEN=ghp-xxx             # Personal access token from GitHub
+
+# Safety Mode (default: normal)
+HELIX_SAFETY_MODE=normal         # strict|normal|permissive|unsafe
 ```
+
+### Autonomous Features
+
+Helix now includes 14 tools for fully autonomous operation:
+
+**📊 Code Analysis** (no config needed):
+- `analyze_codebase()` - Quick scan
+- `deep_analyze()` - Semantic analysis with AST, dependencies, vulnerabilities
+
+**🌐 Web Intelligence** (requires API key):
+- `search_web()` - Real-time documentation search via Tavily or Exa
+
+**🔧 GitHub Automation** (git works without token, API features need token):
+- `git_commit()`, `git_push()` - Git operations
+- `create_branch()`, `list_branches()` - Branch management
+- `create_pull_request()` - PR automation
+
+**🔒 Safety**:
+- `check_safety()` - Interactive confirmations for first-time/destructive operations
+
+For detailed usage, see:
+- `backend/QUICKSTART.md` - Quick examples
+- `backend/ORCHESTRATOR_GUIDE.md` - Complete feature guide
 
 ### Agent Customization
 

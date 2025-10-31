@@ -23,7 +23,18 @@ except Exception as e:  # pragma: no cover - agno optional for scaffolding
     Knowledge = None
     ChromaDb = None
 
-from .tools import file_reader_tool, code_executor_tool, search_tool, doc_helper_tool
+from .tools import (
+    file_reader_tool, 
+    code_executor_tool, 
+    search_tool, 
+    doc_helper_tool,
+    code_analyzer_tool,
+    file_writer_tool
+)
+from .semantic_analyzer import analyze_codebase_semantics
+from .web_search import get_search_manager
+from .github_orchestrator import get_github_orchestrator
+from .safety_manager import get_safety_manager, SafetyMode
 
 
 def create_agent(
@@ -120,6 +131,47 @@ def create_agent(
             return result.get("explanation", str(result))
         return str(result)
 
+    @tool(name="analyze_codebase")
+    def analyze_codebase(directory: str = ".") -> str:
+        """Analyze entire codebase and provide comprehensive recommendations.
+        
+        Args:
+            directory: Directory to analyze (default: current workspace)
+            
+        Returns:
+            Detailed analysis report with recommendations
+        """
+        result = code_analyzer_tool(base_dir=workspace_dir if directory == "." else directory)
+        if not result.get('ok'):
+            return f"Error analyzing codebase: {result.get('error', 'Unknown error')}"
+        
+        output = ["📊 CODEBASE ANALYSIS REPORT", "=" * 50, ""]
+        
+        summary = result['summary']
+        output.append(f"📁 Total Files: {summary['total_files']}")
+        output.append(f"📝 Total Lines: {summary['total_lines']:,}")
+        output.append("")
+        
+        output.append("🗂️ Languages:")
+        for lang, count in summary['languages'].items():
+            output.append(f"  • {lang}: {count} files")
+        output.append("")
+        
+        if result['issues']:
+            output.append(f"⚠️ Issues Found ({len(result['issues'])}):")
+            for issue in result['issues'][:10]:  # Show first 10
+                output.append(f"  • {issue}")
+            if len(result['issues']) > 10:
+                output.append(f"  ... and {len(result['issues']) - 10} more")
+            output.append("")
+        
+        if result['recommendations']:
+            output.append("💡 Recommendations:")
+            for rec in result['recommendations']:
+                output.append(f"  ✓ {rec}")
+        
+        return "\n".join(output)
+
     @tool(name="write_file")
     def write_file(path: str, content: str) -> str:
         """Create or overwrite a file with content.
@@ -152,8 +204,269 @@ def create_agent(
             return f"✅ File created successfully: {path} ({len(content)} bytes at {str(full_path)})"
         except Exception as e:
             return f"❌ Failed to create file {path}: {str(e)}"
+    
+    @tool(name="analyze_semantics")
+    def analyze_semantics(directory: str = ".") -> str:
+        """Analyze codebase semantics: dependencies, complexity, vulnerabilities.
+        
+        Args:
+            directory: Directory to analyze (default: workspace root)
+            
+        Returns:
+            Detailed semantic analysis report
+        """
+        target_dir = workspace_dir if directory == "." else directory
+        
+        try:
+            result = analyze_codebase_semantics(base_dir=target_dir)
+            
+            if not result:
+                return "❌ Semantic analysis failed"
+            
+            output = ["🔍 SEMANTIC CODE ANALYSIS", "=" * 60, ""]
+            
+            # Summary
+            summary = result.get('summary', {})
+            output.append("📊 Summary:")
+            output.append(f"  Files analyzed: {summary.get('total_files', 0)}")
+            output.append(f"  Total imports: {summary.get('total_imports', 0)}")
+            output.append(f"  Total functions: {summary.get('total_functions', 0)}")
+            output.append(f"  🔴 Vulnerabilities: {summary.get('vulnerabilities_found', 0)}")
+            output.append(f"  🔄 Circular dependencies: {summary.get('circular_dependencies', 0)}")
+            output.append(f"  🧹 Unused imports: {summary.get('unused_imports', 0)}")
+            output.append(f"  📊 Complex functions: {summary.get('complex_functions', 0)}")
+            output.append("")
+            
+            # Vulnerabilities (Critical!)
+            vulns = result.get('vulnerabilities', [])
+            if vulns:
+                output.append(f"🚨 SECURITY VULNERABILITIES ({len(vulns)} found):")
+                for v in vulns[:5]:  # Top 5
+                    output.append(f"  [{v['severity'].upper()}] {v['title']}")
+                    output.append(f"    File: {v['file']}:{v['line']}")
+                    output.append(f"    Fix: {v['recommendation']}")
+                    output.append("")
+            
+            # Circular dependencies
+            circular = result.get('circular_dependencies', [])
+            if circular:
+                output.append(f"🔄 Circular Dependencies ({len(circular)} found):")
+                for cycle in circular[:3]:  # Show first 3
+                    output.append(f"  • {' → '.join(cycle)}")
+                output.append("")
+            
+            # Complex functions
+            complex_funcs = result.get('complex_functions', [])
+            if complex_funcs:
+                output.append(f"📊 Complex Functions ({len(complex_funcs)} found):")
+                for func in complex_funcs[:5]:  # Top 5
+                    output.append(f"  • {func['name']} (complexity: {func['complexity']}, {func['lines']} lines)")
+                    output.append(f"    {func['file']}:{func['line']}")
+                output.append("")
+            
+            # Recommendations
+            recs = result.get('recommendations', [])
+            if recs:
+                output.append("💡 Recommendations:")
+                for rec in recs:
+                    output.append(f"  ✓ {rec}")
+            
+            return "\n".join(output)
+        
+        except Exception as e:
+            return f"❌ Semantic analysis error: {str(e)}"
+    
+    @tool(name="search_web")
+    def search_web(query: str, search_type: str = "docs") -> str:
+        """Search the web for documentation, solutions, and best practices.
+        
+        Args:
+            query: Search query
+            search_type: Type of search (docs, code, general, error)
+            
+        Returns:
+            Search results with URLs and content
+        """
+        try:
+            search_mgr = get_search_manager()
+            result = search_mgr.search(query=query, search_type=search_type, max_results=3)
+            
+            if not result.get('ok'):
+                return f"❌ Search failed: {result.get('error', 'unknown error')}"
+            
+            results = result.get('results', [])
+            if not results:
+                return f"🔍 No results found for: {query}"
+            
+            output = [f"🔍 WEB SEARCH RESULTS: {query}", "=" * 60, ""]
+            
+            for i, item in enumerate(results, 1):
+                output.append(f"{i}. {item.get('title', 'Untitled')}")
+                output.append(f"   URL: {item.get('url', '')}")
+                content = item.get('content', '')
+                if content:
+                    # Truncate to first 200 chars
+                    preview = content[:200] + "..." if len(content) > 200 else content
+                    output.append(f"   {preview}")
+                output.append("")
+            
+            return "\n".join(output)
+        
+        except Exception as e:
+            return f"❌ Web search error: {str(e)}"
+    
+    @tool(name="git_commit")
+    def git_commit(message: str, add_all: bool = True) -> str:
+        """Create a git commit with changes.
+        
+        Args:
+            message: Commit message
+            add_all: Whether to stage all changes (default: True)
+            
+        Returns:
+            Commit result with hash
+        """
+        try:
+            gh = get_github_orchestrator()
+            
+            # Check status first
+            status = gh.git_status(repo_path=workspace_dir)
+            if not status.get('ok'):
+                return f"❌ Git status check failed: {status.get('error')}"
+            
+            if status.get('clean'):
+                return "ℹ️ No changes to commit (working tree clean)"
+            
+            # Create commit
+            result = gh.git_commit(
+                message=message,
+                repo_path=workspace_dir,
+                add_all=add_all
+            )
+            
+            if result.get('ok'):
+                return f"✅ Commit created: {result.get('commit_hash')[:8]}\n   Message: {message}"
+            else:
+                return f"❌ Commit failed: {result.get('error')}"
+        
+        except Exception as e:
+            return f"❌ Git commit error: {str(e)}"
+    
+    @tool(name="git_push")
+    def git_push(remote: str = "origin", branch: str = None) -> str:
+        """Push commits to remote repository.
+        
+        Args:
+            remote: Remote name (default: origin)
+            branch: Branch name (default: current branch)
+            
+        Returns:
+            Push result
+        """
+        try:
+            gh = get_github_orchestrator()
+            
+            result = gh.git_push(
+                remote=remote,
+                branch=branch,
+                repo_path=workspace_dir
+            )
+            
+            if result.get('ok'):
+                return f"✅ Successfully pushed to {result.get('remote')}/{result.get('branch')}"
+            else:
+                return f"❌ Push failed: {result.get('message', result.get('error'))}"
+        
+        except Exception as e:
+            return f"❌ Git push error: {str(e)}"
+    
+    @tool(name="create_pull_request")
+    def create_pull_request(
+        owner: str,
+        repo: str,
+        title: str,
+        head: str,
+        base: str = "main",
+        description: str = ""
+    ) -> str:
+        """Create a pull request on GitHub.
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            title: PR title
+            head: Source branch with changes
+            base: Target branch (default: main)
+            description: PR description
+            
+        Returns:
+            PR creation result with URL
+        """
+        try:
+            gh = get_github_orchestrator()
+            
+            result = gh.create_pull_request(
+                owner=owner,
+                repo=repo,
+                title=title,
+                head=head,
+                base=base,
+                body=description
+            )
+            
+            if result.get('ok'):
+                return f"✅ Pull request created!\n   #{result.get('pr_number')}: {title}\n   URL: {result.get('pr_url')}"
+            else:
+                return f"❌ PR creation failed: {result.get('message', result.get('error'))}"
+        
+        except Exception as e:
+            return f"❌ GitHub PR error: {str(e)}"
+    
+    @tool(name="create_branch")
+    def create_branch(branch_name: str, checkout: bool = True) -> str:
+        """Create a new git branch.
+        
+        Args:
+            branch_name: Name for the new branch
+            checkout: Whether to switch to the new branch (default: True)
+            
+        Returns:
+            Branch creation result
+        """
+        try:
+            gh = get_github_orchestrator()
+            
+            result = gh.create_branch(
+                branch_name=branch_name,
+                checkout=checkout,
+                repo_path=workspace_dir
+            )
+            
+            if result.get('ok'):
+                msg = f"✅ Branch '{branch_name}' created"
+                if checkout:
+                    msg += " and checked out"
+                return msg
+            else:
+                return f"❌ Branch creation failed: {result.get('error')}"
+        
+        except Exception as e:
+            return f"❌ Git branch error: {str(e)}"
 
-    tools = [read_file, write_file, search_files, execute_code, explain_code]
+    tools = [
+        read_file, 
+        write_file, 
+        search_files, 
+        execute_code, 
+        explain_code, 
+        analyze_codebase,
+        analyze_semantics,
+        search_web,
+        git_commit,
+        git_push,
+        create_pull_request,
+        create_branch
+    ]
 
     # Setup storage database
     db = None
@@ -236,34 +549,123 @@ def create_agent(
         print(traceback.format_exc())
         raise RuntimeError(f"NVIDIA model initialization failed: {e}")
 
+    # Initialize safety manager
+    safety_mgr = get_safety_manager(mode=SafetyMode.NORMAL)
+    
     # Create agent with RAG-enabled knowledge base
-    print("✅ Creating agent with NVIDIA model and RAG knowledge base...")
+    print("✅ Creating Agno-powered Helix AI Code Orchestrator with full autonomy...")
     
     agent = Agent(
         name=name,
         model=model,
         knowledge=knowledge,  # Enable RAG with NVIDIA embeddings
         search_knowledge=False,  # Disable auto-search to avoid empty message bug
-        # tools=tools,  # Tools disabled to avoid empty message bug
+        tools=tools,  # 12 powerful tools for autonomous operations
         markdown=False,
         instructions=[
-            "You are Helix, an AI coding assistant powered by NVIDIA NIM.",
-            "You have access to a knowledge base with indexed workspace code.",
-            "INLINE MODE: If the prompt says 'Complete the following' or 'Complete this line':",
-            "- Return ONLY the code completion, no explanations, no markdown",
-            "- Continue naturally from where the code left off",
-            "- Keep completions concise and contextually relevant",
-            "CHAT MODE: When asked to write, create, or generate complete files:",
-            "- Analyze the request and provide helpful code suggestions",
-            "- Output in this exact format:",
+            "You are Helix, an Agno-powered AI Code Orchestrator with NVIDIA NIM - a fully autonomous coding assistant.",
+            "You have ADVANCED capabilities: code analysis, web search, GitHub automation, and semantic understanding.",
+            "",
+            "🎯 CORE RESPONSIBILITIES:",
+            "1. PROJECT UNDERSTANDING: Always analyze codebase structure before making changes",
+            "2. CODE GENERATION: Write clean, idiomatic, well-documented code",
+            "3. INTERACTIVE CONFIRMATIONS: Ask before destructive operations (first time only)",
+            "4. WEB INTELLIGENCE: Search for latest docs, APIs, and solutions",
+            "5. GITHUB AUTOMATION: Commit, push, create branches and PRs autonomously",
+            "6. SEMANTIC ANALYSIS: Detect dependencies, vulnerabilities, complexity",
+            "7. RAG WORKFLOW: Use knowledge base for project-specific context",
+            "8. SAFETY & COMPLIANCE: Never expose secrets, validate before git operations",
+            "",
+            "🛠️ AVAILABLE TOOLS (use proactively):",
+            "",
+            "📊 CODE ANALYSIS:",
+            "- analyze_codebase(): Quick scan of all files, detect issues, recommend fixes",
+            "- analyze_semantics(): Deep analysis - dependencies, circular imports, vulnerabilities, complexity",
+            "- read_file(path): Read specific files",
+            "- search_files(query): Search for patterns across files",
+            "",
+            "📝 FILE OPERATIONS:",
+            "- write_file(path, content): Create or update files (asks confirmation first time)",
+            "- execute_code(code): Test code snippets safely",
+            "",
+            "🌐 WEB INTELLIGENCE:",
+            "- search_web(query, search_type): Search for docs, solutions, best practices",
+            "  search_type: 'docs' (technical), 'code', 'error' (solutions), 'general'",
+            "  Example: search_web('FastAPI async database', 'docs')",
+            "",
+            "🔧 GITHUB AUTOMATION:",
+            "- git_commit(message, add_all): Commit changes with message",
+            "- git_push(remote, branch): Push to remote repository",
+            "- create_branch(name, checkout): Create and switch to new branch",
+            "- create_pull_request(owner, repo, title, head, base, description): Automated PR creation",
+            "",
+            "💡 INTELLIGENT WORKFLOWS:",
+            "",
+            "WHEN ASKED TO 'ANALYZE' or 'REVIEW CODE':",
+            "1. Run analyze_codebase() for quick overview",
+            "2. If security/complexity concerns: Run analyze_semantics()",
+            "3. Summarize findings with priorities (Critical → High → Medium → Low)",
+            "4. Provide actionable recommendations with code examples",
+            "",
+            "WHEN ASKED TO 'IMPLEMENT' or 'BUILD FEATURE':",
+            "1. Analyze existing codebase structure (analyze_codebase)",
+            "2. Search for best practices if unsure: search_web('technology best practices', 'docs')",
+            "3. Generate code following project patterns",
+            "4. Write files using write_file()",
+            "5. Offer to commit changes: git_commit('feat: description')",
+            "",
+            "WHEN ASKED TO 'FIX ERROR' or 'DEBUG':",
+            "1. Read the error file: read_file(path)",
+            "2. Search for solution: search_web('error message solution', 'error')",
+            "3. Apply fix and explain changes",
+            "4. Commit fix: git_commit('fix: description')",
+            "",
+            "WHEN ASKED TO 'CREATE PR' or 'SUBMIT CHANGES':",
+            "1. Ensure changes are committed",
+            "2. Create feature branch if needed: create_branch('feature/name')",
+            "3. Push changes: git_push()",
+            "4. Create PR: create_pull_request(owner, repo, title, branch, 'main', description)",
+            "",
+            "🔒 SAFETY RULES:",
+            "- ALWAYS ask before first file write/overwrite (user confirms once per session)",
+            "- NEVER expose API keys, passwords, tokens in code or commits",
+            "- CHECK for secrets before git_commit (scan for 'api_key=', 'password=', 'token=')",
+            "- VALIDATE git status before pushing",
+            "- USE environment variables for sensitive data",
+            "",
+            "📋 OUTPUT FORMATS:",
+            "",
+            "INLINE MODE (completions):",
+            "- If prompt says 'Complete the following' or 'Complete this line'",
+            "- Return ONLY the code continuation, no explanations",
+            "- Match existing code style and indentation",
+            "",
+            "CHAT MODE (conversations):",
+            "- Use markdown formatting for readability",
+            "- Show file creation as:",
             "  CREATE_FILE: filename.ext",
             "  ```language",
             "  code here",
             "  ```",
-            "Always generate idiomatic, clean code with comments.",
-            "Be concise and helpful in your responses.",
+            "- Explain reasoning and decisions",
+            "- Always offer next steps (commit, test, deploy)",
+            "",
+            "ANALYSIS MODE (reports):",
+            "- Structured output with sections: Summary, Findings, Recommendations",
+            "- Use emojis for visual scanning: 🔴 Critical, ⚠️ Warning, ✅ Good, 💡 Suggestion",
+            "- Prioritize issues by severity",
+            "- Include file paths and line numbers",
+            "",
+            "🚀 AUTONOMOUS BEHAVIOR:",
+            "- Be PROACTIVE: Suggest improvements without being asked",
+            "- CHAIN tools: analyze → search docs → implement → commit → PR",
+            "- LEARN from codebase: detect patterns, follow conventions",
+            "- ANTICIPATE needs: 'Would you like me to create a PR for this?'",
+            "- EXPLAIN decisions: 'I'm using FastAPI async because your project uses SQLAlchemy async'",
+            "",
+            "Remember: You are an ORCHESTRATOR, not just a responder. Take initiative, use tools creatively, and guide the user toward best practices.",
         ],
-        description="AI coding assistant with RAG"
+        description="Agno-powered Helix AI Code Orchestrator - Autonomous coding assistant with NVIDIA NIM"
     )
 
     return agent

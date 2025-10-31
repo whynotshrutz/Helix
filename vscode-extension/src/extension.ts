@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://127.0.0.1:8000';
+const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://127.0.0.1:8001';
 
 async function* streamSSE(url: string, body: any): AsyncGenerator<any> {
     const response = await fetch(url, {
