@@ -3,11 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = require("vscode");
-const path = require("path");
-const dotenv = require("dotenv");
-// Load environment variables from .env file
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
-const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://127.0.0.1:8000';
+const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://127.0.0.1:8001';
 async function* streamSSE(url, body) {
     var _a;
     const response = await fetch(url, {
@@ -151,37 +147,11 @@ function activate(context) {
                     // Create file URI
                     const fileUri = vscode.Uri.joinPath(workspaceFolders[0].uri, filename);
                     try {
-                        // Write file locally
+                        // Write file
                         await vscode.workspace.fs.writeFile(fileUri, Buffer.from(code, 'utf-8'));
                         // Open the file in editor
                         const doc = await vscode.workspace.openTextDocument(fileUri);
                         await vscode.window.showTextDocument(doc, { preview: false });
-                        // Get relative path from workspace root
-                        const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
-                        const relativePath = filename.replace(workspaceRoot, '').replace(/^[\/\\]/, '');
-                        // Commit to GitHub
-                        try {
-                            const response = await fetch(`${BACKEND_URL}/github/whynotshrutz/Helix/content/${relativePath}`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    content: code,
-                                    message: `AI: Created ${relativePath}\n\nAutomatically committed by Helix MCP`
-                                })
-                            });
-                            if (!response.ok) {
-                                console.error('Failed to commit to GitHub:', await response.text());
-                                vscode.window.showWarningMessage(`File created locally but GitHub commit failed: ${filename}`);
-                            }
-                            else {
-                                console.log('Successfully committed to GitHub:', filename);
-                                vscode.window.showInformationMessage(`✅ Created and committed: ${filename}`);
-                            }
-                        }
-                        catch (commitError) {
-                            console.error('Error committing to GitHub:', commitError);
-                            vscode.window.showWarningMessage(`File created locally but GitHub commit failed: ${filename}`);
-                        }
                         filesCreated++;
                         console.log(`Successfully created: ${filename}`);
                     }

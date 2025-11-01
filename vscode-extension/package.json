@@ -17,9 +17,9 @@
     "watch": "tsc -w -p ./"
   },
   "devDependencies": {
+    "typescript": "^5.0.0",
     "@types/node": "^18.0.0",
-    "@types/vscode": "^1.70.0",
-    "typescript": "^5.0.0"
+    "@types/vscode": "^1.70.0"
   },
   "contributes": {
     "commands": [
@@ -32,8 +32,5 @@
         "title": "Helix MCP: Inline Suggest"
       }
     ]
-  },
-  "dependencies": {
-    "dotenv": "^17.2.3"
   }
 }
