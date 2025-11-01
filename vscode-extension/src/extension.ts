@@ -1,6 +1,11 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as dotenv from 'dotenv';
 
-const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://127.0.0.1:8001';
+// Load environment variables from .env file
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
+const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://127.0.0.1:8000';
 
 async function* streamSSE(url: string, body: any): AsyncGenerator<any> {
     const response = await fetch(url, {

@@ -3,7 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = require("vscode");
-const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://127.0.0.1:8001';
+const path = require("path");
+const dotenv = require("dotenv");
+// Load environment variables from .env file
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://127.0.0.1:8000';
 async function* streamSSE(url, body) {
     var _a;
     const response = await fetch(url, {
