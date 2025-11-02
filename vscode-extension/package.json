@@ -1,0 +1,64 @@
+{
+  "name": "helix-mcp-client",
+  "displayName": "Helix MCP Client",
+  "description": "AI code assistant with FastMCP, Agno AI, and NVIDIA NIM",
+  "version": "0.1.0",
+  "publisher": "helix-dev",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "tsc -p ./",
+    "watch": "tsc -w -p ./"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.70.0"
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "helix-chat",
+          "title": "Helix AI",
+          "icon": "$(comment-discussion)"
+        }
+      ]
+    },
+    "views": {
+      "helix-chat": [
+        {
+          "type": "webview",
+          "id": "helixChatView",
+          "name": "Chat"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "helixMcp.openChat",
+        "title": "Open Helix Chat",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "helixMcp.clearChat",
+        "title": "Clear Chat History"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "helixMcp.clearChat",
+          "when": "view == helixChatView",
+          "group": "navigation"
+        }
+      ]
+    }
+  }
+}

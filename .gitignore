@@ -1,0 +1,91 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.egg-info/
+*.egg
+*.env
+.env
+.env.*
+.venv/
+venv/
+ENV/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# VS Code
+.vscode/
+.history/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Test, coverage, and profiling
+.coverage
+.tox/
+.nox/
+.cache/
+pytest_cache/
+htmlcov/
+coverage.xml
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+*.manifest
+*.spec
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ChromaDB and other DBs
+tmp/
+*.db
+*.sqlite3
+
+# Project-specific
+backend/.env
+backend/.env.*
+backend/tmp/
+backend/__pycache__/
+workspace/
+*.bak
+
+# Secret/config files
+*.key
+*.pem
+*.crt
+
+# Ignore model checkpoints and large files
+*.pt
+*.ckpt
+*.h5
+
+# Ignore data and output folders
+data/
+output/
+results/
+
+# Ignore user instructions and AI toolkit configs
+*.instructions.md
+
+# Ignore any local scripts or temp files
+*.swp
+*.swo
+*.tmp
+*.temp
