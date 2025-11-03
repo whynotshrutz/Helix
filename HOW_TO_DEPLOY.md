@@ -64,13 +64,13 @@ kubectl create secret generic helix-secrets \
 
 # 3. Deploy to EKS
 chmod +x scripts/deploy.sh
-./scripts/deploy.sh helix-cluster us-west-2
+./scripts/deploy.sh helix-cluster us-east-1
 
 # 4. Get backend URL
 kubectl get service helix-backend-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
 ```
 
-**Example output:** `a1234567890abcd.us-west-2.elb.amazonaws.com`
+**Example output:** `a1234567890abcd.us-east-1.elb.amazonaws.com`
 
 ### Step 3: Distribute Extension
 
@@ -89,7 +89,7 @@ kubectl get service helix-backend-service -o jsonpath='{.status.loadBalancer.ing
    - Open VS Code Settings (Ctrl+,)
    - Search for "Helix"
    - Set "Helix: Backend Url" to:
-     http://a1234567890abcd.us-west-2.elb.amazonaws.com
+     http://a1234567890abcd.us-east-1.elb.amazonaws.com
 
 3. Start using Helix:
    - Click Helix icon in left sidebar

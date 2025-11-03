@@ -151,7 +151,7 @@ See full guide in `DEPLOYMENT.md`. Quick version:
 # 1. Create EKS cluster (one-time)
 eksctl create cluster \
   --name helix-cluster \
-  --region us-west-2 \
+  --region us-east-1 \
   --nodegroup-name helix-nodes \
   --node-type t3.medium \
   --nodes 3
@@ -168,14 +168,14 @@ kubectl create secret generic helix-secrets \
 
 # 4. Deploy
 chmod +x scripts/deploy.sh
-./scripts/deploy.sh helix-cluster us-west-2
+./scripts/deploy.sh helix-cluster us-east-1
 
 # 5. Get backend URL
 kubectl get service helix-backend-service \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
 ```
 
-Example output: `a1234567890.us-west-2.elb.amazonaws.com`
+Example output: `a1234567890.us-east-1.elb.amazonaws.com`
 
 #### Step 2: Update Extension Configuration
 
@@ -205,10 +205,10 @@ Create a guide for users to configure the extension:
 
 ```bash
 # Add to ~/.bashrc or ~/.zshrc (Linux/Mac)
-export HELIX_BACKEND_URL=http://a1234567890.us-west-2.elb.amazonaws.com
+export HELIX_BACKEND_URL=http://a1234567890.us-east-1.elb.amazonaws.com
 
 # Or to system environment variables (Windows)
-setx HELIX_BACKEND_URL "http://a1234567890.us-west-2.elb.amazonaws.com"
+setx HELIX_BACKEND_URL "http://a1234567890.us-east-1.elb.amazonaws.com"
 ```
 
 #### Step 3: Test End-to-End
@@ -459,7 +459,7 @@ Setup:
 
 **Next Steps:**
 1. Build extension: `cd vscode-extension && npm run build && vsce package`
-2. Deploy backend: `./scripts/deploy.sh helix-cluster us-west-2`
+2. Deploy backend: `./scripts/deploy.sh helix-cluster us-east-1`
 3. Get backend URL: `kubectl get svc helix-backend-service`
 4. Distribute extension + setup guide to users
 5. Monitor usage and collect feedback

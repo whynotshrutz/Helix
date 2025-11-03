@@ -81,7 +81,7 @@ For production deployment to AWS EKS, see [DEPLOYMENT.md](DEPLOYMENT.md)
 
 3. Deploy:
    ```bash
-   ./scripts/deploy.sh helix-cluster us-west-2
+   ./scripts/deploy.sh helix-cluster us-east-1
    ```
 
 ## Configuration

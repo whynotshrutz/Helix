@@ -145,7 +145,7 @@ The extension already supports production deployment:
 3. **Deploy to EKS:**
    ```bash
    chmod +x scripts/deploy.sh
-   ./scripts/deploy.sh helix-cluster us-west-2
+   ./scripts/deploy.sh helix-cluster us-east-1
    ```
 
 4. **Get Backend URL:**

@@ -47,7 +47,7 @@ If you don't have an EKS cluster yet:
 # Using eksctl (recommended)
 eksctl create cluster \
   --name helix-cluster \
-  --region us-west-2 \
+  --region us-east-1 \
   --nodegroup-name helix-nodes \
   --node-type t3.medium \
   --nodes 3 \
@@ -64,7 +64,7 @@ eksctl create cluster \
 Configure kubectl:
 
 ```bash
-aws eks update-kubeconfig --name helix-cluster --region us-west-2
+aws eks update-kubeconfig --name helix-cluster --region us-east-1
 ```
 
 ## Step 2: Setup AWS Load Balancer Controller
@@ -92,7 +92,7 @@ Update the script configuration:
 ```bash
 # Edit scripts/build-and-push.sh
 # Set your AWS region and account ID
-AWS_REGION="us-west-2"
+AWS_REGION="us-east-1"
 ```
 
 Run the build script:
@@ -136,7 +136,7 @@ kubectl create secret generic helix-secrets \
 Edit `k8s/deployment.yaml` and replace `<YOUR_ECR_REGISTRY>` with your ECR registry URL:
 
 ```yaml
-image: 123456789012.dkr.ecr.us-west-2.amazonaws.com/helix-backend:latest
+image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/helix-backend:latest
 ```
 
 ## Step 6: Deploy to EKS
@@ -145,7 +145,7 @@ Run the deployment script:
 
 ```bash
 chmod +x scripts/deploy.sh
-./scripts/deploy.sh helix-cluster us-west-2
+./scripts/deploy.sh helix-cluster us-east-1
 ```
 
 This will:
@@ -169,7 +169,7 @@ kubectl get ingress
 
 The URL will look like:
 ```
-a1234567890abcdef-1234567890.us-west-2.elb.amazonaws.com
+a1234567890abcdef-1234567890.us-east-1.elb.amazonaws.com
 ```
 
 ## Step 8: Configure VS Code Extension
@@ -310,7 +310,7 @@ For development, use smaller instances:
 ```bash
 eksctl create cluster \
   --name helix-dev \
-  --region us-west-2 \
+  --region us-east-1 \
   --node-type t3.small \
   --nodes 2 \
   --spot
@@ -403,12 +403,12 @@ To delete everything:
 kubectl delete -f k8s/
 
 # Delete ECR images (optional)
-aws ecr delete-repository --repository-name helix-backend --force --region us-west-2
-aws ecr delete-repository --repository-name helix-sandbox-worker --force --region us-west-2
-aws ecr delete-repository --repository-name helix-code-executor --force --region us-west-2
+aws ecr delete-repository --repository-name helix-backend --force --region us-east-1
+aws ecr delete-repository --repository-name helix-sandbox-worker --force --region us-east-1
+aws ecr delete-repository --repository-name helix-code-executor --force --region us-east-1
 
 # Delete EKS cluster
-eksctl delete cluster --name helix-cluster --region us-west-2
+eksctl delete cluster --name helix-cluster --region us-east-1
 ```
 
 ## Next Steps

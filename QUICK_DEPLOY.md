@@ -12,7 +12,7 @@ kubectl create secret generic helix-secrets \
   --from-literal=github-token='YOUR_TOKEN'
 
 # 3. Deploy
-./scripts/deploy.sh helix-cluster us-west-2
+./scripts/deploy.sh helix-cluster us-east-1
 
 # 4. Get Backend URL
 kubectl get svc helix-backend-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'

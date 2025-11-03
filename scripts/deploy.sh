@@ -4,7 +4,7 @@
 set -e
 
 CLUSTER_NAME="${1:-helix-cluster}"
-AWS_REGION="${2:-us-west-2}"
+AWS_REGION="${2:-us-east-1}"
 
 echo "🔧 Configuring kubectl for EKS cluster..."
 aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_REGION}

@@ -4,7 +4,7 @@
 set -e
 
 # Configuration
-AWS_REGION="us-west-2"  # Change to your region
+AWS_REGION="us-east-1"  # Change to your region
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 IMAGE_TAG="${1:-latest}"
