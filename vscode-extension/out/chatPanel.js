@@ -520,17 +520,22 @@ class HelixChatProvider {
         <button id="attach-button" title="Attach files or folders">📎</button>
     </div>
 
-    <textarea id="message-input" placeholder="Ask Helix anything or drop files here..." rows="1"></textarea>
+    <textarea id="message-input" placeholder="Ask Helix anything" rows="1"></textarea>
 
     <!-- Send button (image). We show send by default and pause while loading -->
     <div id="send-controls">
-        <button id="send-button" title="Send" aria-label="Send" type="button">
-            <img id="send-img" src="${sendIcon}" alt="Send" />
-        </button>
-        <button id="pause-button" title="Pause" aria-label="Pause" type="button" style="display:none;">
-            <img id="pause-img" src="${pauseIcon}" alt="Pause" />
-        </button>
-    </div>
+    <img 
+        id="send-button" 
+        src="${webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'sendbutton.png'))}" 
+        title="Send" 
+        style="width:24px; height:24px; cursor:pointer;" />
+    <img 
+        id="pause-button" 
+        src="${webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'pause-button.png'))}" 
+        title="Pause" 
+        style="width:24px; height:24px; cursor:pointer; display:none;" />
+</div>
+
 </div>
 
 
