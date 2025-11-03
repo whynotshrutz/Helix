@@ -42,6 +42,7 @@ class RunRequest(BaseModel):
     mode: Optional[str] = "chat"  # chat | inline
     stream: Optional[bool] = False
     inline_completion: Optional[bool] = False  # Flag to prevent file creation
+    workspace_dir: Optional[str] = None  # Current VS Code workspace directory
 
 
 @app.on_event("startup")
@@ -162,6 +163,11 @@ async def run(req: RunRequest):
         multi_system = getattr(app.state, "multi_agent_system", None)
         if multi_system is None:
             raise HTTPException(status_code=503, detail="Multi-agent system not initialized")
+        
+        # Update workspace directory if provided
+        if req.workspace_dir:
+            multi_system.workspace_dir = req.workspace_dir
+            print(f"📁 Updated workspace directory to: {req.workspace_dir}")
         
         # Non-streaming mode (multi-agent doesn't support streaming yet)
         try:

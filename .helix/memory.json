@@ -1,0 +1,260 @@
+{
+  "conversation": [
+    {
+      "role": "user",
+      "content": "hi",
+      "timestamp": "2025-11-03T14:14:07.823678",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "Hi there! I'm ready to assist you with coding tasks. What would you like to work on?",
+      "timestamp": "2025-11-03T14:14:07.825775",
+      "metadata": {
+        "agent": "orchestrator",
+        "route": "none"
+      }
+    },
+    {
+      "role": "user",
+      "content": "hi",
+      "timestamp": "2025-11-03T19:35:38.091332",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "Hey! How can I help you today? Just let me know what you need - code analysis, file operations, research, or Git help.",
+      "timestamp": "2025-11-03T19:35:38.134694",
+      "metadata": {
+        "agent": "orchestrator",
+        "route": "none"
+      }
+    },
+    {
+      "role": "user",
+      "content": "show me all changed files",
+      "timestamp": "2025-11-03T19:36:07.400973",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Complete the following typescript code. Return only the completion, no explanations:\n\n            <div class=\"empty-state-title\">Welcome to Helix AI</div>\r\n            <div class=\"empty-state-subtitle\">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>\r\n        </div>\r\n    </div>\r\n    <div class=\"loading\">\r\n        <span>Helix is thinking...</span>\r\n    </div>\r\n    <div id=\"attachments-container\"></div>\r\n    <div id=\"input-container\">\r\n        <button id=\"attach-button\" title=\"Attach files or folders\">📎</button>\r\n        <textarea id=\"message-input\" placeholder=\"Ask Helix anything ",
+      "timestamp": "2025-11-03T19:42:15.961195",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Complete the following typescript code. Return only the completion, no explanations:\n\n            <div class=\"empty-state-title\">Welcome to Helix AI</div>\r\n            <div class=\"empty-state-subtitle\">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>\r\n        </div>\r\n    </div>\r\n    <div class=\"loading\">\r\n        <span>Helix is thinking...</span>\r\n    </div>\r\n    <div id=\"attachments-container\"></div>\r\n    <div id=\"input-container\">\r\n        <button id=\"attach-button\" title=\"Attach files or folders\">📎</button>\r\n        <textarea id=\"message-input\" placeholder=\"Ask Helix anything",
+      "timestamp": "2025-11-03T19:42:16.338158",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "Hey! How can I help you today? Just let me know what you need - code analysis, file operations, research, or Git help.",
+      "timestamp": "2025-11-03T19:42:17.810477",
+      "metadata": {
+        "agent": "orchestrator",
+        "route": "none"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "Hey! How can I help you today? Just let me know what you need - code analysis, file operations, research, or Git help.",
+      "timestamp": "2025-11-03T19:42:18.059326",
+      "metadata": {
+        "agent": "orchestrator",
+        "route": "none"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Complete the following typescript code. Return only the completion, no explanations:\n\n            <div class=\"empty-state-title\">Welcome to Helix AI</div>\r\n            <div class=\"empty-state-subtitle\">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>\r\n        </div>\r\n    </div>\r\n    <div class=\"loading\">\r\n        <span>Helix is thinking...</span>\r\n    </div>\r\n    <div id=\"attachments-container\"></div>\r\n    <div id=\"input-container\">\r\n        <button id=\"attach-button\" title=\"Attach files or folders\">📎</button>\r\n        <textarea id=\"message-input\" placeholder=\"Ask s",
+      "timestamp": "2025-11-03T19:43:12.961746",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Complete the following typescript code. Return only the completion, no explanations:\n\n            <div class=\"empty-state-title\">Welcome to Helix AI</div>\r\n            <div class=\"empty-state-subtitle\">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>\r\n        </div>\r\n    </div>\r\n    <div class=\"loading\">\r\n        <span>Helix is thinking...</span>\r\n    </div>\r\n    <div id=\"attachments-container\"></div>\r\n    <div id=\"input-container\">\r\n        <button id=\"attach-button\" title=\"Attach files or folders\">📎</button>\r\n        <textarea id=\"message-input\" placeholder=\"Ask sh",
+      "timestamp": "2025-11-03T19:43:13.006945",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Complete the following typescript code. Return only the completion, no explanations:\n\n            <div class=\"empty-state-title\">Welcome to Helix AI</div>\r\n            <div class=\"empty-state-subtitle\">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>\r\n        </div>\r\n    </div>\r\n    <div class=\"loading\">\r\n        <span>Helix is thinking...</span>\r\n    </div>\r\n    <div id=\"attachments-container\"></div>\r\n    <div id=\"input-container\">\r\n        <button id=\"attach-button\" title=\"Attach files or folders\">📎</button>\r\n        <textarea id=\"message-input\" placeholder=\"Ask shr",
+      "timestamp": "2025-11-03T19:43:13.200673",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Complete the following typescript code. Return only the completion, no explanations:\n\n            <div class=\"empty-state-title\">Welcome to Helix AI</div>\r\n            <div class=\"empty-state-subtitle\">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>\r\n        </div>\r\n    </div>\r\n    <div class=\"loading\">\r\n        <span>Helix is thinking...</span>\r\n    </div>\r\n    <div id=\"attachments-container\"></div>\r\n    <div id=\"input-container\">\r\n        <button id=\"attach-button\" title=\"Attach files or folders\">📎</button>\r\n        <textarea id=\"message-input\" placeholder=\"Ask shri",
+      "timestamp": "2025-11-03T19:43:13.497514",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Complete the following typescript code. Return only the completion, no explanations:\n\n            <div class=\"empty-state-title\">Welcome to Helix AI</div>\r\n            <div class=\"empty-state-subtitle\">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>\r\n        </div>\r\n    </div>\r\n    <div class=\"loading\">\r\n        <span>Helix is thinking...</span>\r\n    </div>\r\n    <div id=\"attachments-container\"></div>\r\n    <div id=\"input-container\">\r\n        <button id=\"attach-button\" title=\"Attach files or folders\">📎</button>\r\n        <textarea id=\"message-input\" placeholder=\"Ask shr",
+      "timestamp": "2025-11-03T19:43:13.822664",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Complete the following typescript code. Return only the completion, no explanations:\n\n            <div class=\"empty-state-title\">Welcome to Helix AI</div>\r\n            <div class=\"empty-state-subtitle\">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>\r\n        </div>\r\n    </div>\r\n    <div class=\"loading\">\r\n        <span>Helix is thinking...</span>\r\n    </div>\r\n    <div id=\"attachments-container\"></div>\r\n    <div id=\"input-container\">\r\n        <button id=\"attach-button\" title=\"Attach files or folders\">📎</button>\r\n        <textarea id=\"message-input\" placeholder=\"Ask shru",
+      "timestamp": "2025-11-03T19:43:14.032994",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Complete the following typescript code. Return only the completion, no explanations:\n\n            <div class=\"empty-state-title\">Welcome to Helix AI</div>\r\n            <div class=\"empty-state-subtitle\">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>\r\n        </div>\r\n    </div>\r\n    <div class=\"loading\">\r\n        <span>Helix is thinking...</span>\r\n    </div>\r\n    <div id=\"attachments-container\"></div>\r\n    <div id=\"input-container\">\r\n        <button id=\"attach-button\" title=\"Attach files or folders\">📎</button>\r\n        <textarea id=\"message-input\" placeholder=\"Ask shrut",
+      "timestamp": "2025-11-03T19:43:14.121395",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Complete the following typescript code. Return only the completion, no explanations:\n\n            <div class=\"empty-state-title\">Welcome to Helix AI</div>\r\n            <div class=\"empty-state-subtitle\">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>\r\n        </div>\r\n    </div>\r\n    <div class=\"loading\">\r\n        <span>Helix is thinking...</span>\r\n    </div>\r\n    <div id=\"attachments-container\"></div>\r\n    <div id=\"input-container\">\r\n        <button id=\"attach-button\" title=\"Attach files or folders\">📎</button>\r\n        <textarea id=\"message-input\" placeholder=\"Ask shruti",
+      "timestamp": "2025-11-03T19:43:14.248746",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "Hi there! I'm ready to assist you with coding tasks. What would you like to work on?",
+      "timestamp": "2025-11-03T19:43:14.817681",
+      "metadata": {
+        "agent": "orchestrator",
+        "route": "none"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "Hey! How can I help you today? Just let me know what you need - code analysis, file operations, research, or Git help.",
+      "timestamp": "2025-11-03T19:43:15.305092",
+      "metadata": {
+        "agent": "orchestrator",
+        "route": "none"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "Hi there! I'm ready to assist you with coding tasks. What would you like to work on?",
+      "timestamp": "2025-11-03T19:43:15.764982",
+      "metadata": {
+        "agent": "orchestrator",
+        "route": "none"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "Hey! How can I help you today? Just let me know what you need - code analysis, file operations, research, or Git help.",
+      "timestamp": "2025-11-03T19:43:15.830343",
+      "metadata": {
+        "agent": "orchestrator",
+        "route": "none"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "Hi there! I'm ready to assist you with coding tasks. What would you like to work on?",
+      "timestamp": "2025-11-03T19:43:16.115604",
+      "metadata": {
+        "agent": "orchestrator",
+        "route": "none"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Complete the following typescript code. Return only the completion, no explanations:\n\n            <div class=\"empty-state-title\">Welcome to Helix AI</div>\r\n            <div class=\"empty-state-subtitle\">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>\r\n        </div>\r\n    </div>\r\n    <div class=\"loading\">\r\n        <span>Helix is thinking...</span>\r\n    </div>\r\n    <div id=\"attachments-container\"></div>\r\n    <div id=\"input-container\">\r\n        <button id=\"attach-button\" title=\"Attach files or folders\">📎</button>\r\n        <textarea id=\"message-input\" placeholder=\"Ask shruti any.",
+      "timestamp": "2025-11-03T19:44:23.656751",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Complete the following typescript code. Return only the completion, no explanations:\n\n            <div class=\"empty-state-title\">Welcome to Helix AI</div>\r\n            <div class=\"empty-state-subtitle\">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>\r\n        </div>\r\n    </div>\r\n    <div class=\"loading\">\r\n        <span>Helix is thinking...</span>\r\n    </div>\r\n    <div id=\"attachments-container\"></div>\r\n    <div id=\"input-container\">\r\n        <button id=\"attach-button\" title=\"Attach files or folders\">📎</button>\r\n        <textarea id=\"message-input\" placeholder=\"Ask shruti any..",
+      "timestamp": "2025-11-03T19:44:23.945390",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Complete the following typescript code. Return only the completion, no explanations:\n\n            <div class=\"empty-state-title\">Welcome to Helix AI</div>\r\n            <div class=\"empty-state-subtitle\">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>\r\n        </div>\r\n    </div>\r\n    <div class=\"loading\">\r\n        <span>Helix is thinking...</span>\r\n    </div>\r\n    <div id=\"attachments-container\"></div>\r\n    <div id=\"input-container\">\r\n        <button id=\"attach-button\" title=\"Attach files or folders\">📎</button>\r\n        <textarea id=\"message-input\" placeholder=\"Ask shruti any.",
+      "timestamp": "2025-11-03T19:44:25.326390",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! I'm Helix, your AI coding assistant. How can I help you today?\n\nI can:\n• Analyze and write code\n• Read and modify files\n• Search for documentation and best practices\n• Help with Git operations (commits, branches, PRs)",
+      "timestamp": "2025-11-03T19:44:25.486676",
+      "metadata": {
+        "agent": "orchestrator",
+        "route": "none"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Complete the following typescript code. Return only the completion, no explanations:\n\n            <div class=\"empty-state-title\">Welcome to Helix AI</div>\r\n            <div class=\"empty-state-subtitle\">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>\r\n        </div>\r\n    </div>\r\n    <div class=\"loading\">\r\n        <span>Helix is thinking...</span>\r\n    </div>\r\n    <div id=\"attachments-container\"></div>\r\n    <div id=\"input-container\">\r\n        <button id=\"attach-button\" title=\"Attach files or folders\">📎</button>\r\n        <textarea id=\"message-input\" placeholder=\"Ask shruti any",
+      "timestamp": "2025-11-03T19:44:25.488480",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "Hey! How can I help you today? Just let me know what you need - code analysis, file operations, research, or Git help.",
+      "timestamp": "2025-11-03T19:44:27.331616",
+      "metadata": {
+        "agent": "orchestrator",
+        "route": "none"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "Hey! How can I help you today? Just let me know what you need - code analysis, file operations, research, or Git help.",
+      "timestamp": "2025-11-03T19:44:27.571945",
+      "metadata": {
+        "agent": "orchestrator",
+        "route": "none"
+      }
+    }
+  ],
+  "facts": [],
+  "project_context": {
+    "languages": [],
+    "frameworks": [],
+    "key_files": [],
+    "description": ""
+  },
+  "metadata": {
+    "created_at": "2025-11-03T14:13:12.363508",
+    "last_updated": "2025-11-03T19:44:27.571945",
+    "version": "1.0"
+  }
+}

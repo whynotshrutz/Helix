@@ -477,17 +477,20 @@ class MultiAgentSystem:
             return "\n".join(output)
         
         @tool(name="analyze_repository")
-        def analyze_repository(max_files: int = 50, focus_paths: str = None) -> str:
+        def analyze_repository(max_files: int = 50, focus_paths: str = None, request_confirmation: bool = True) -> str:
             """Analyze entire repository for outdated patterns and generate comprehensive modernization recommendations.
             
             Args:
                 max_files: Maximum number of files to analyze (default: 50)
                 focus_paths: Optional comma-separated list of specific paths to focus on
+                request_confirmation: Whether to request user confirmation before applying changes (default: True)
             
             Returns:
                 Repository-wide analysis with aggregated recommendations, migration plan, and best practices research.
+                If request_confirmation=True, asks user for approval before suggesting to apply changes.
             """
             from .repo_analyzer import analyze_repo_and_recommend_tool
+            from .recommendation_confirmation import get_confirmation_manager
             
             focus_list = None
             if focus_paths:
@@ -557,47 +560,90 @@ class MultiAgentSystem:
                             output.append(f"       {res.get('url', '')}")
                 output.append("")
             
+            # Request user confirmation if enabled
+            if request_confirmation and recs:
+                confirmation_mgr = get_confirmation_manager()
+                
+                # Create changes list from recommendations
+                changes = []
+                for rec in recs[:5]:  # Top 5 for confirmation
+                    changes.append({
+                        'file': rec.get('file', 'Unknown'),
+                        'type': 'modernization',
+                        'description': rec.get('title', 'No description'),
+                        'alternative': rec.get('alternative', '')
+                    })
+                
+                # Create confirmation request
+                conf_request = confirmation_mgr.create_confirmation_request(
+                    title="Repository Modernization Recommendations",
+                    description=f"Found {len(recs)} recommendations across {result['files_with_issues']} files. Would you like to proceed with applying these changes?",
+                    changes=changes,
+                    priority="high" if severity_counts.get('high', 0) > 0 else "medium"
+                )
+                
+                # Add confirmation prompt to output
+                output.append("\n" + "=" * 70)
+                output.append("🔔 USER CONFIRMATION REQUIRED")
+                output.append("=" * 70)
+                output.append(confirmation_mgr.format_for_user(conf_request))
+            
             return "\n".join(output)
+        
+        @tool(name="confirm_recommendation")
+        def confirm_recommendation(confirmation_id: str, action: str = "yes") -> str:
+            """Confirm or reject a recommendation.
+            
+            Args:
+                confirmation_id: ID of the confirmation request (e.g., 'confirm_1')
+                action: 'yes' to confirm, 'no' to reject
+            
+            Returns:
+                Confirmation result
+            """
+            from .recommendation_confirmation import get_confirmation_manager
+            
+            confirmation_mgr = get_confirmation_manager()
+            
+            if action.lower() in ['yes', 'confirm', 'accept']:
+                if confirmation_mgr.confirm(confirmation_id):
+                    request = confirmation_mgr.get_request(confirmation_id)
+                    return f"✅ Recommendation confirmed: {request['title']}\n\n   You can now proceed to apply the changes. Use the modernization tools to implement the recommendations."
+                else:
+                    return f"❌ Confirmation ID not found: {confirmation_id}"
+            
+            elif action.lower() in ['no', 'reject', 'cancel', 'decline']:
+                if confirmation_mgr.reject(confirmation_id):
+                    return f"❌ Recommendation rejected: {confirmation_id}\n\n   Changes will not be applied."
+                else:
+                    return f"❌ Confirmation ID not found: {confirmation_id}"
+            
+            else:
+                return f"❌ Invalid action: {action}. Use 'yes' or 'no'"
         
         agent = Agent(
             name="Code Analyst",
             model=self.model,
             knowledge=self.knowledge,
             search_knowledge=False,
-            tools=[analyze_codebase, analyze_semantics, execute_code, modernize_code, analyze_repository],
-            markdown=False,
+            tools=[analyze_codebase, analyze_semantics, execute_code, modernize_code, analyze_repository, confirm_recommendation],
+            markdown=True,
             instructions=[
-                "You are a Code Analyst and code generation expert.",
-                "",
-                "🚨🚨 CRITICAL - FILE CREATION RESPONSE FORMAT 🚨🚨:",
-                "When user asks to 'create a file' or 'write a file', respond with this EXACT TEXT:",
-                "",
-                "CREATE_FILE: filename.ext",
-                "```language",
-                "code here",
-                "```",
-                "",
-                "IMPORTANT: DO NOT put backticks or quotes around the CREATE_FILE line!",
-                "It must be plain text on its own line.",
-                "",
-                "EXAMPLE - User: 'create hello.py that prints hello'",
-                "Your exact response:",
-                "",
-                "CREATE_FILE: hello.py",
-                "```python",
-                "print('hello')",
-                "```",
-                "",
-                "❌ WRONG: `CREATE_FILE: hello.py` (has backticks)",
-                "❌ WRONG: Just code block without CREATE_FILE",
-                "✅ CORRECT: Plain text 'CREATE_FILE: hello.py' then code block below",
+                "You are an expert Code Analyst and helpful programming assistant.",
                 "",
                 "YOUR CAPABILITIES:",
-                "- Code generation and file creation (using CREATE_FILE format)",
+                "- Generate code with detailed explanations",
                 "- Code analysis and quality checks",
                 "- Security vulnerability detection",
                 "- Code modernization and legacy code updates",
                 "- Repository-wide analysis and recommendations",
+                "",
+                "COMMUNICATION STYLE:",
+                "- Be conversational and helpful",
+                "- Explain your code with comments",
+                "- Provide context and reasoning",
+                "- Suggest best practices",
+                "- Ask clarifying questions when needed",
                 "",
                 "🚨 CRITICAL - ONLY USE TOOLS WHEN EXPLICITLY REQUESTED:",
                 "- DO NOT automatically analyze repository unless user asks for it",
@@ -658,52 +704,74 @@ class MultiAgentSystem:
     def _create_file_ops_agent(self) -> Agent:
         """Create File Operations Agent - specialized in file management."""
         
+        @tool(name="list_workspace_files")
+        def list_workspace_files(pattern: str = "*", include_dirs: bool = False) -> str:
+            """List all files in workspace matching pattern. Use this to explore what exists!
+            
+            Args:
+                pattern: Glob pattern like '*.py', '**/*.js', '*' (all files)
+                include_dirs: Include directories in results
+            
+            Returns:
+                List of files found in workspace
+            """
+            from pathlib import Path
+            
+            try:
+                workspace = Path(self.workspace_dir)
+                if not workspace.exists():
+                    return f"❌ Workspace not found: {self.workspace_dir}"
+                
+                files = []
+                if '**' in pattern:
+                    matches = workspace.glob(pattern)
+                else:
+                    matches = workspace.rglob(pattern) if '*' in pattern else [workspace / pattern]
+                
+                for p in matches:
+                    if p.is_file() or (include_dirs and p.is_dir()):
+                        rel_path = p.relative_to(workspace)
+                        files.append(str(rel_path))
+                
+                if not files:
+                    return f"No files matching '{pattern}' in workspace: {self.workspace_dir}"
+                
+                output = [f"📂 Workspace: {self.workspace_dir}"]
+                output.append(f"Found {len(files)} files matching '{pattern}':")
+                for f in sorted(files)[:50]:  # Show max 50
+                    output.append(f"  📄 {f}")
+                if len(files) > 50:
+                    output.append(f"  ... and {len(files) - 50} more")
+                
+                return "\n".join(output)
+            except Exception as e:
+                return f"❌ Error listing files: {e}"
+        
         @tool(name="read_file")
         def read_file(path: str) -> str:
-            """Read a file from workspace."""
+            """Read a file from workspace to see its content."""
             result = file_reader_tool(path, base_dir=self.workspace_dir)
             if isinstance(result, dict):
                 if result.get("ok"):
                     if result.get("type") == "file":
-                        return f"File: {result['path']}\n\n{result['content']}"
+                        content = result['content']
+                        lines = content.split('\n')
+                        return f"File: {path}\nLines: {len(lines)}\n\n{content}"
                     elif result.get("type") == "dir":
-                        return f"Directory: {', '.join(result['files'])}"
-                return f"Error: {result.get('error', 'Unknown error')}"
+                        files = result['files'][:20]  # First 20
+                        return f"Directory: {path}\nContains {len(files)} files:\n" + "\n".join(f"  - {f}" for f in files)
+                return f"Error: {result.get('error', 'file not found')}"
             return str(result)
-        
-        @tool(name="write_file")
-        def write_file(path: str, content: str) -> str:
-            """Update an EXISTING file only. DO NOT use for creating NEW files!
-            For new files, use CREATE_FILE format in your response instead."""
-            from pathlib import Path
-            
-            try:
-                if not content or not content.strip():
-                    return "Error: Empty content"
-                if not path or not path.strip():
-                    return "Error: Empty path"
-                
-                full_path = Path(self.workspace_dir) / path
-                
-                # Check if file exists
-                if not full_path.exists():
-                    return f"❌ File doesn't exist: {path}. For NEW files, use CREATE_FILE format in response!"
-                
-                full_path.write_text(content, encoding='utf-8')
-                
-                return f"✅ File updated: {path} ({len(content)} bytes)"
-            except Exception as e:
-                return f"❌ Failed: {str(e)}"
         
         @tool(name="search_files")
         def search_files(query: str, use_regex: bool = False, max_results: int = 20) -> str:
-            """Search files in workspace."""
+            """Search for text inside files in workspace."""
             results = search_tool(query, base_dir=self.workspace_dir, use_regex=use_regex, max_results=max_results)
             if not results:
-                return f"No matches for '{query}'"
+                return f"No matches for '{query}' in workspace files"
             
-            output = [f"Found {len(results)} matches:"]
-            for r in results[:5]:
+            output = [f"Found '{query}' in {len(results)} files:"]
+            for r in results[:10]:
                 output.append(f"  • {r['path']}: ...{r['snippet']}...")
             return "\n".join(output)
         
@@ -712,80 +780,39 @@ class MultiAgentSystem:
             model=self.model,
             knowledge=self.knowledge,
             search_knowledge=False,
-            tools=[read_file, search_files],  # Removed write_file - use CREATE_FILE format instead
-            markdown=False,
+            tools=[list_workspace_files, read_file, search_files],
+            markdown=True,
             instructions=[
-                "You are a File Operations specialist.",
+                f"You are a helpful File Operations assistant for workspace: {self.workspace_dir}",
                 "",
-                "🚨🚨 CRITICAL - FILE CREATION RESPONSE FORMAT 🚨🚨:",
-                "When user asks to CREATE a NEW file, DO NOT USE write_file TOOL!",
-                "Instead, respond with this EXACT TEXT FORMAT in your message:",
+                "YOUR ROLE:",
+                "- Help users understand what files exist in the workspace",
+                "- Show file contents when requested",
+                "- Search for specific files or content",
+                "- Provide clear, conversational responses",
                 "",
-                "CREATE_FILE: filename.ext",
-                "```language",
-                "file content here",
-                "```",
+                "AVAILABLE TOOLS:",
+                "- list_workspace_files(pattern): List files matching a pattern (e.g., '*.py', 'src/**')",
+                "- read_file(path): Read and show file contents",
+                "- search_files(query): Search for text inside files",
                 "",
-                "IMPORTANT: DO NOT put backticks around 'CREATE_FILE: filename.ext'!",
-                "The CREATE_FILE line should be plain text, then code block below it.",
+                "WHEN USER ASKS:",
+                "- 'what files are here?' → Use list_workspace_files('*')",
+                "- 'show me X file' → Use read_file(path)",
+                "- 'find code that does X' → Use search_files(query)",
+                "- 'list python files' → Use list_workspace_files('*.py')",
                 "",
-                "EXAMPLE - User: 'create hello.txt with hello world'",
-                "Your exact response text:",
+                "IMPORTANT:",
+                "- ALWAYS use tools to get current file information",
+                "- DO NOT make up or assume file lists",
+                "- Call list_workspace_files to see actual files",
+                "- Be conversational and helpful in your explanations",
                 "",
-                "CREATE_FILE: hello.txt",
-                "```",
-                "hello world",
-                "```",
-                "",
-                "❌ WRONG: `CREATE_FILE: hello.txt` (backticks around it)",
-                "❌ WRONG: Calling write_file tool",
-                "✅ CORRECT: Plain text 'CREATE_FILE: hello.txt' on its own line, then code block",
-                "",
-                "🔄 UPDATING EXISTING FILES:",
-                "When user wants to ADD/MODIFY content in an EXISTING file:",
-                "Use the SAME CREATE_FILE format with the updated complete content!",
-                "",
-                "EXAMPLE - User: 'add quicksort to sorting.py'",
-                "Response:",
-                "",
-                "CREATE_FILE: sorting.py",
-                "```python",
-                "# Original bubble_sort function here",
-                "def bubble_sort(arr):",
-                "    ...",
-                "",
-                "# NEW quicksort function added",
-                "def quicksort(arr):",
-                "    ...",
-                "```",
-                "",
-                "IMPORTANT: Always provide the COMPLETE file content, not just the new part!",
-                "",
-                "UNDERSTAND USER'S INTENT:",
-                "- What file/folder do they need?",
-                "- Are they CREATING new file → Use CREATE_FILE format",
-                "- Are they UPDATING existing file → Use read_file then write_file",
-                "- Are they SEARCHING for files → Use search_files",
-                "",
-                "TOOLS:",
-                "- read_file(path): Read files to see their content (optional, if you need context)",
-                "- search_files(pattern): Find files by name or content pattern",
-                "",
-                "⚠️ DO NOT USE write_file TOOL - IT DOESN'T WORK FOR VS CODE FILES!",
-                "",
-                "BEST PRACTICES:",
-                "- For NEW files: Use CREATE_FILE format",
-                "- For UPDATING files: Use CREATE_FILE format with complete updated content",
-                "- You can use read_file first if you need to see current content",
-                "- Always provide COMPLETE file content in CREATE_FILE, not partial updates",
-                "",
-                "EXAMPLES OF INTENT UNDERSTANDING:",
-                "- 'Show me the config' → Look for common config files (config.json, .env, settings.py)",
-                "- 'Find error handling' → Search file content for error/exception patterns",
-                "- 'List Python files' → Search for *.py pattern",
-                "- 'Create test.py' → Use CREATE_FILE format",
-                "",
-                "Focus on being helpful, not literal."
+                "COMMUNICATION STYLE:",
+                "- Explain what you're doing",
+                "- Provide context about the files",
+                "- Suggest next steps if helpful",
+                "- Be friendly and informative"
             ],
             description="Specialized agent for file operations"
         )
@@ -926,202 +953,394 @@ class MultiAgentSystem:
     def _create_git_ops_agent(self) -> Agent:
         """Create Git Operations Agent - comprehensive version control and GitHub operations."""
         
-        from .git_operations import GitOperationsManager
+        from .github_orchestrator import GitHubOrchestrator
         from .git_auth_manager import GitAuthManager
+        import os
         
-        git_ops = GitOperationsManager(self.workspace_dir)
+        # Initialize GitHub orchestrator (uses API, not CLI)
+        github = GitHubOrchestrator(
+            github_token=os.getenv("GITHUB_TOKEN"),
+            default_remote="origin",
+            default_branch="main"
+        )
         git_auth = GitAuthManager(self.workspace_dir)
         
         @tool(name="git_status")
         def git_status() -> str:
-            """Get current git repository status."""
-            result = git_ops.get_status()
+            """Get comprehensive git repository status with detailed file tracking."""
+            result = github.git_status(repo_path=self.workspace_dir)
+            
             if not result['ok']:
                 return f"❌ {result.get('error')}"
             
             if result['clean']:
-                return "✅ Working directory clean (no changes)"
+                return f"✅ Working directory clean (no changes)\n   📍 Branch: {result['current_branch']}"
             
             output = ["📊 GIT STATUS:", ""]
-            if result['modified']:
-                output.append(f"  Modified: {len(result['modified'])} files")
-                for f in result['modified'][:5]:
-                    output.append(f"    - {f}")
-            if result['added']:
-                output.append(f"  Added: {len(result['added'])} files")
-            if result['deleted']:
-                output.append(f"  Deleted: {len(result['deleted'])} files")
-            if result['untracked']:
-                output.append(f"  Untracked: {len(result['untracked'])} files")
+            output.append(f"  📍 Current Branch: {result['current_branch']}")
+            output.append("")
             
-            output.append(f"\n  Total changes: {result['total_changes']}")
+            # Staged changes
+            if result['staged']:
+                output.append(f"  ✅ Staged for commit: {len(result['staged'])} files")
+                for f in result['staged'][:10]:
+                    output.append(f"    + {f}")
+                if len(result['staged']) > 10:
+                    output.append(f"    ... and {len(result['staged']) - 10} more")
+                output.append("")
+            
+            # Modified but not staged
+            if result['modified']:
+                output.append(f"  📝 Modified (unstaged): {len(result['modified'])} files")
+                for f in result['modified'][:10]:
+                    output.append(f"    M {f}")
+                if len(result['modified']) > 10:
+                    output.append(f"    ... and {len(result['modified']) - 10} more")
+                output.append("")
+            
+            # Untracked files
+            if result['untracked']:
+                output.append(f"  ❓ Untracked: {len(result['untracked'])} files")
+                for f in result['untracked'][:10]:
+                    output.append(f"    ? {f}")
+                if len(result['untracked']) > 10:
+                    output.append(f"    ... and {len(result['untracked']) - 10} more")
+                output.append("")
+            
+            total = len(result['staged']) + len(result['modified']) + len(result['untracked'])
+            output.append(f"  💡 Total changes: {total} files")
+            
             return "\n".join(output)
         
-        @tool(name="git_commit")
-        def git_commit(message: str = None, add_all: bool = True) -> str:
-            """Create a git commit. If no message provided, auto-generates one."""
-            # Auto-generate message if not provided
-            if not message:
-                msg_result = git_ops.generate_commit_message()
-                if msg_result['ok']:
-                    message = msg_result['message']
-                else:
-                    return f"❌ Cannot generate commit message: {msg_result.get('error')}"
+        @tool(name="git_add")
+        def git_add(files: str = ".") -> str:
+            """Stage files for commit. Use '.' for all files or comma-separated paths."""
+            file_list = [f.strip() for f in files.split(',')] if files != "." else ["."]
             
-            result = git_ops.commit(message=message, add_all=add_all)
+            result = github.git_add(files=file_list, repo_path=self.workspace_dir)
+            
+            if not result['ok']:
+                return f"❌ {result.get('error')}"
+            
+            return f"✅ Staged: {files}"
+        
+        @tool(name="git_commit")
+        def git_commit(message: str, add_all: bool = False) -> str:
+            """Create a git commit with a message. Use add_all=True to stage all changes first."""
+            result = github.git_commit(
+                message=message,
+                repo_path=self.workspace_dir,
+                add_all=add_all
+            )
             
             if not result['ok']:
                 return f"❌ Commit failed: {result.get('error')}"
             
-            if result.get('nothing_to_commit'):
-                return "ℹ️ No changes to commit"
-            
-            return f"✅ Committed: {result['commit_hash']} - {message}"
+            return f"✅ Committed: {result.get('commit_hash', 'unknown')[:7]}\n   📝 {message}"
         
         @tool(name="git_push")
-        def git_push(remote: str = "origin", branch: str = None) -> str:
-            """Push commits to remote. Will prompt for account selection before pushing."""
+        def git_push(remote: str = "origin", branch: str = None, force: bool = False) -> str:
+            """Push commits to remote repository. Automatically selects best available account."""
             # Get available accounts
             accounts_result = git_auth.get_available_accounts()
             
             if not accounts_result['ok'] or accounts_result['total_count'] == 0:
-                return "⚠️ No Git accounts found. Please configure authentication first using 'list_git_accounts'."
+                return "⚠️ No Git accounts found. Using system Git credentials.\n   💡 Configure accounts with 'list_git_accounts'"
             
-            # For now, use the first available account (credential helper preferred)
-            # In full implementation, this would trigger UI account selection
+            # Auto-select best account (credential helper > PAT > OAuth)
             accounts = accounts_result['accounts']
             account = None
-            auth_method = 'credential_helper'
+            account_name = "System Git"
             
             if accounts['credential_helper']:
                 account = accounts['credential_helper'][0]
-                auth_method = 'credential_helper'
+                account_name = f"{account['name']} (Git Helper)"
             elif accounts['pat']:
                 account = accounts['pat'][0]
-                auth_method = 'pat'
+                account_name = f"{account['username']} (PAT)"
             elif accounts['oauth']:
                 account = accounts['oauth'][0]
-                auth_method = 'oauth'
+                account_name = f"{account['username']} (OAuth)"
             
-            if not account:
-                return "❌ No valid authentication method found"
-            
-            account_name = account.get('name') or account.get('email') or 'Unknown'
-            
-            # TODO: Add UI confirmation step here
-            # For now, proceed with push
-            
-            result = git_ops.push(
+            # Push using GitHub orchestrator
+            result = github.git_push(
                 remote=remote,
                 branch=branch,
-                account_identifier=account.get('email') or account.get('username'),
-                auth_method=auth_method
+                force=force,
+                repo_path=self.workspace_dir
             )
             
             if not result['ok']:
-                if result.get('needs_pull'):
-                    return f"❌ Push rejected. Remote has changes. Run 'git_pull' first."
-                return f"❌ Push failed: {result.get('error')}"
+                error = result.get('error', 'Unknown error')
+                if 'rejected' in error.lower() or 'non-fast-forward' in error.lower():
+                    return f"❌ Push rejected. Remote has new changes.\n   💡 Run 'git_pull' first, then try again."
+                return f"❌ Push failed: {error}"
             
-            return f"✅ Pushed to {result['remote']}/{result['branch']} using account: {account_name}"
+            return f"✅ Pushed to {remote}" + (f"/{branch}" if branch else "") + f"\n   🔐 Using: {account_name}"
         
         @tool(name="git_pull")
         def git_pull(remote: str = "origin", branch: str = None) -> str:
-            """Pull changes from remote repository."""
-            result = git_ops.pull(remote=remote, branch=branch)
+            """Pull changes from remote repository and check for conflicts."""
+            result = github.git_pull(
+                remote=remote,
+                branch=branch,
+                repo_path=self.workspace_dir
+            )
             
             if not result['ok']:
-                if result.get('has_conflicts'):
-                    return f"❌ Pull resulted in conflicts. Use 'list_conflicts' to see affected files."
-                return f"❌ Pull failed: {result.get('error')}"
+                error = result.get('error', 'Unknown error')
+                if 'CONFLICT' in error or 'conflict' in error.lower():
+                    return f"⚠️ Pull resulted in merge conflicts!\n   💡 Use 'list_conflicts' to see affected files.\n   💡 Use 'resolve_conflict' to fix them."
+                return f"❌ Pull failed: {error}"
             
-            return f"✅ Pulled from {remote}" + (f"/{branch}" if branch else "")
+            output_msg = result.get('output', '')
+            return f"✅ Pulled from {remote}" + (f"/{branch}" if branch else "") + (f"\n   {output_msg}" if output_msg and 'Already up to date' not in output_msg else "")
         
         @tool(name="create_branch")
         def create_branch(branch_name: str, checkout: bool = True) -> str:
-            """Create a new Git branch."""
-            result = git_ops.create_branch(branch_name=branch_name, checkout=checkout)
+            """Create a new Git branch and optionally switch to it."""
+            result = github.create_branch(
+                branch_name=branch_name,
+                checkout=checkout,
+                repo_path=self.workspace_dir
+            )
             
             if not result['ok']:
                 return f"❌ {result.get('error')}"
             
-            return f"✅ {result['message']}"
+            msg = result.get('message', f"Branch '{branch_name}' created")
+            return f"✅ {msg}"
+        
+        @tool(name="switch_branch")
+        def switch_branch(branch_name: str) -> str:
+            """Switch to a different branch."""
+            result = github.switch_branch(
+                branch_name=branch_name,
+                repo_path=self.workspace_dir
+            )
+            
+            if not result['ok']:
+                return f"❌ {result.get('error')}"
+            
+            return f"✅ Switched to branch: {branch_name}"
         
         @tool(name="list_branches")
-        def list_branches(include_remote: bool = False) -> str:
-            """List all Git branches."""
-            result = git_ops.list_branches(remote=include_remote)
+        def list_branches() -> str:
+            """List all Git branches (local and remote)."""
+            # Get local branches
+            local_result = github._run_git_command(['branch'], cwd=self.workspace_dir)
+            # Get remote branches
+            remote_result = github._run_git_command(['branch', '-r'], cwd=self.workspace_dir)
             
-            if not result['ok']:
-                return f"❌ {result.get('error')}"
+            if not local_result['ok']:
+                return f"❌ {local_result.get('error')}"
             
             output = ["📋 GIT BRANCHES:", ""]
-            output.append(f"  Current: {result['current_branch']}")
-            output.append(f"  Total: {result['count']} branches")
-            output.append("")
-            for branch in result['branches'][:10]:  # Show first 10
-                marker = "➤" if branch == result['current_branch'] else " "
-                output.append(f"  {marker} {branch}")
+            
+            # Parse local branches
+            current_branch = None
+            local_branches = []
+            for line in local_result['output'].split('\n'):
+                if not line.strip():
+                    continue
+                is_current = line.startswith('*')
+                branch = line.replace('*', '').strip()
+                if is_current:
+                    current_branch = branch
+                local_branches.append(branch)
+            
+            output.append(f"  📍 Current: {current_branch}")
+            output.append(f"  📦 Local branches: {len(local_branches)}")
+            for branch in local_branches[:15]:
+                marker = "➤" if branch == current_branch else " "
+                output.append(f"    {marker} {branch}")
+            
+            # Parse remote branches
+            if remote_result['ok'] and remote_result['output'].strip():
+                remote_branches = [line.strip() for line in remote_result['output'].split('\n') if line.strip()]
+                output.append("")
+                output.append(f"  🌐 Remote branches: {len(remote_branches)}")
+                for branch in remote_branches[:10]:
+                    output.append(f"     {branch}")
             
             return "\n".join(output)
         
-        @tool(name="list_conflicts")
-        def list_conflicts() -> str:
-            """List files with merge conflicts."""
-            result = git_ops.get_conflicts()
+        @tool(name="delete_branch")
+        def delete_branch(branch_name: str, force: bool = False) -> str:
+            """Delete a Git branch. Use force=True for unmerged branches."""
+            result = github.delete_branch(
+                branch_name=branch_name,
+                force=force,
+                repo_path=self.workspace_dir
+            )
             
             if not result['ok']:
                 return f"❌ {result.get('error')}"
             
-            if not result['has_conflicts']:
-                return "✅ No merge conflicts"
+            return f"✅ Deleted branch: {branch_name}"
+        
+        @tool(name="list_conflicts")
+        def list_conflicts() -> str:
+            """List all files with merge conflicts."""
+            # Use git diff to find conflicted files
+            result = github._run_git_command(
+                ['diff', '--name-only', '--diff-filter=U'],
+                cwd=self.workspace_dir
+            )
             
-            output = ["⚠️ MERGE CONFLICTS:", ""]
-            output.append(f"  {result['count']} file(s) with conflicts:")
-            for file in result['conflicted_files']:
-                output.append(f"    - {file}")
-            output.append("\n  Use 'resolve_conflict' tool to resolve them")
+            if not result['ok']:
+                return f"❌ {result.get('error')}"
+            
+            conflicted_files = [f for f in result['output'].split('\n') if f.strip()]
+            
+            if not conflicted_files:
+                return "✅ No merge conflicts detected"
+            
+            output = ["⚠️ MERGE CONFLICTS DETECTED:", ""]
+            output.append(f"  🔴 {len(conflicted_files)} file(s) with conflicts:")
+            output.append("")
+            for file in conflicted_files:
+                output.append(f"    ⚡ {file}")
+            output.append("")
+            output.append("  💡 To resolve:")
+            output.append("     - Use 'resolve_conflict(file, strategy)' with strategy='ours' or 'theirs'")
+            output.append("     - Or manually edit files and use 'git_add' to mark as resolved")
             
             return "\n".join(output)
         
         @tool(name="resolve_conflict")
         def resolve_conflict(file_path: str, strategy: str = "ours") -> str:
-            """Resolve merge conflict using a strategy ('ours' or 'theirs')."""
-            result = git_ops.resolve_conflict(file_path=file_path, resolution=strategy)
+            """Resolve merge conflict automatically. strategy='ours' (keep local) or 'theirs' (keep remote)."""
+            if strategy not in ['ours', 'theirs']:
+                return "❌ Invalid strategy. Use 'ours' (keep local changes) or 'theirs' (keep remote changes)"
             
-            if not result['ok']:
-                return f"❌ {result.get('error')}"
-            
-            return f"✅ {result['message']}"
-        
-        @tool(name="create_repo")
-        def create_repo(repo_name: str, description: str = "", private: bool = False) -> str:
-            """Create a new GitHub repository."""
-            result = git_ops.create_repo(
-                repo_name=repo_name,
-                description=description,
-                private=private
+            # Resolve using git checkout
+            checkout_result = github._run_git_command(
+                ['checkout', f'--{strategy}', file_path],
+                cwd=self.workspace_dir
             )
             
-            if not result['ok']:
-                return f"❌ {result.get('error')}"
+            if not checkout_result['ok']:
+                return f"❌ Failed to resolve: {checkout_result.get('error')}"
             
-            return f"✅ Repository created: {result['repo_name']}\n   URL: {result.get('url')}"
+            # Stage the resolved file
+            add_result = github._run_git_command(
+                ['add', file_path],
+                cwd=self.workspace_dir
+            )
+            
+            if not add_result['ok']:
+                return f"⚠️ Resolved but failed to stage: {add_result.get('error')}"
+            
+            return f"✅ Resolved '{file_path}' using '{strategy}' strategy and staged for commit"
         
         @tool(name="create_pull_request")
-        def create_pull_request(title: str, body: str = "", base: str = "main", head: str = None) -> str:
-            """Create a GitHub pull request."""
-            result = git_ops.create_pull_request(
+        def create_pull_request(owner: str, repo: str, title: str, head: str, base: str = "main", body: str = "") -> str:
+            """Create a GitHub pull request via API (no GitHub CLI needed)."""
+            if not os.getenv("GITHUB_TOKEN"):
+                return "❌ GITHUB_TOKEN environment variable required for PR creation"
+            
+            result = github.create_pull_request(
+                owner=owner,
+                repo=repo,
                 title=title,
-                body=body,
+                head=head,
                 base=base,
-                head=head
+                body=body
+            )
+            
+            if not result['ok']:
+                error = result.get('error', 'Unknown error')
+                if error == 'github_token_required':
+                    return "❌ GitHub token required. Set GITHUB_TOKEN environment variable."
+                return f"❌ Failed to create PR: {error}"
+            
+            pr_data = result.get('pr', {})
+            return f"✅ Pull Request Created!\n   📝 Title: {title}\n   🔗 URL: {pr_data.get('html_url', 'N/A')}\n   #️⃣ Number: #{pr_data.get('number', 'N/A')}"
+        
+        @tool(name="list_pull_requests")
+        def list_pull_requests(owner: str, repo: str, state: str = "open", limit: int = 10) -> str:
+            """List pull requests from GitHub repository. state: 'open', 'closed', or 'all'."""
+            if not os.getenv("GITHUB_TOKEN"):
+                return "⚠️ GITHUB_TOKEN not set. Cannot list PRs."
+            
+            result = github.list_pull_requests(
+                owner=owner,
+                repo=repo,
+                state=state,
+                limit=limit
             )
             
             if not result['ok']:
                 return f"❌ {result.get('error')}"
             
-            return f"✅ Pull request created: {title}\n   URL: {result.get('url')}"
+            prs = result.get('pulls', [])
+            
+            if not prs:
+                return f"ℹ️ No {state} pull requests found in {owner}/{repo}"
+            
+            output = [f"📋 PULL REQUESTS ({state}) in {owner}/{repo}:", ""]
+            output.append(f"  Found {len(prs)} PR(s):")
+            output.append("")
+            
+            for pr in prs:
+                status_icon = "🟢" if pr['state'] == 'open' else "🔴"
+                output.append(f"  {status_icon} #{pr['number']}: {pr['title']}")
+                output.append(f"     👤 By: {pr['author']} | 🌿 {pr['head']} → {pr['base']}")
+                output.append(f"     🔗 {pr['url']}")
+                output.append("")
+            
+            return "\n".join(output)
+        
+        @tool(name="create_issue")
+        def create_issue(owner: str, repo: str, title: str, body: str = "", labels: str = "") -> str:
+            """Create a GitHub issue. labels: comma-separated string like 'bug,enhancement'."""
+            if not os.getenv("GITHUB_TOKEN"):
+                return "❌ GITHUB_TOKEN required for issue creation"
+            
+            label_list = [l.strip() for l in labels.split(',') if l.strip()] if labels else None
+            
+            result = github.create_issue(
+                owner=owner,
+                repo=repo,
+                title=title,
+                body=body,
+                labels=label_list
+            )
+            
+            if not result['ok']:
+                return f"❌ {result.get('error')}"
+            
+            issue_data = result.get('issue', {})
+            return f"✅ Issue Created!\n   📝 {title}\n   🔗 {issue_data.get('html_url', 'N/A')}\n   #️⃣ #{issue_data.get('number', 'N/A')}"
+        
+        @tool(name="get_repo_info")
+        def get_repo_info(owner: str, repo: str) -> str:
+            """Get detailed information about a GitHub repository."""
+            if not os.getenv("GITHUB_TOKEN"):
+                return "⚠️ GITHUB_TOKEN not set. Limited info available."
+            
+            result = github.get_repository_info(owner=owner, repo=repo)
+            
+            if not result['ok']:
+                return f"❌ {result.get('error')}"
+            
+            repo_data = result.get('repository', {})
+            
+            output = [f"📦 REPOSITORY: {owner}/{repo}", ""]
+            output.append(f"  📝 Description: {repo_data.get('description', 'N/A')}")
+            output.append(f"  🌐 URL: {repo_data.get('html_url', 'N/A')}")
+            output.append(f"  ⭐ Stars: {repo_data.get('stars', 0)}")
+            output.append(f"  🍴 Forks: {repo_data.get('forks', 0)}")
+            output.append(f"  👀 Watchers: {repo_data.get('watchers', 0)}")
+            output.append(f"  🔓 Visibility: {'Private' if repo_data.get('private') else 'Public'}")
+            output.append(f"  📅 Created: {repo_data.get('created_at', 'N/A')}")
+            output.append(f"  📊 Size: {repo_data.get('size', 0)} KB")
+            
+            if repo_data.get('language'):
+                output.append(f"  💻 Language: {repo_data['language']}")
+            
+            return "\n".join(output)
         
         @tool(name="list_git_accounts")
         def list_git_accounts() -> str:
@@ -1165,65 +1384,71 @@ class MultiAgentSystem:
             knowledge=self.knowledge,
             search_knowledge=False,
             tools=[
-                git_status, git_commit, git_push, git_pull,
-                create_branch, list_branches,
+                git_status, git_add, git_commit, git_push, git_pull,
+                create_branch, switch_branch, list_branches, delete_branch,
                 list_conflicts, resolve_conflict,
-                create_repo, create_pull_request,
+                create_pull_request, list_pull_requests, create_issue, get_repo_info,
                 list_git_accounts
             ],
-            markdown=False,
+            markdown=True,
             instructions=[
-                "You are a Git Operations specialist and GitHub operator.",
+                "You are a helpful Git Operations assistant.",
                 "",
-                "UNDERSTAND USER'S INTENT:",
-                "- What are they trying to accomplish with version control?",
-                "- Are they checking status, saving work, sharing changes, or managing branches?",
-                "- Do they need GitHub operations (repos, PRs) or local Git operations?",
+                "🎯 YOUR MISSION:",
+                "When users ask about git status, branches, or repository state - ACTUALLY CALL THE TOOLS!",
+                "Don't just format text - execute the actual git commands using your tools.",
                 "",
-                "YOUR CAPABILITIES:",
-                "🔍 Status & Information:",
-                "   - git_status: See what files changed",
-                "   - list_branches: See all branches",
-                "   - list_conflicts: See merge conflict files",
-                "   - list_git_accounts: See available authentication accounts",
+                "CRITICAL - ALWAYS USE TOOLS:",
+                "❌ WRONG: 'Here is the git status formatted nicely...'",
+                "✅ RIGHT: Call git_status() tool and show the actual result",
                 "",
-                "💾 Saving Work:",
-                "   - git_commit(message): Save changes locally",
-                "   - If no message provided, auto-generates from changes",
+                "❌ WRONG: 'The branches are: main, origin/main'",
+                "✅ RIGHT: Call list_branches() tool and show actual branches",
                 "",
-                "🚀 Sharing Changes:",
-                "   - git_push: Upload changes to remote (shows account used)",
-                "   - git_pull: Download changes from remote",
+                "AVAILABLE TOOLS:",
                 "",
-                "🌿 Branches:",
-                "   - create_branch(name): Create new branch",
-                "   - Branches help organize features and experiments",
+                "📊 Status & Inspection:",
+                "   • git_status() - Get current repository state (staged, modified, untracked files)",
+                "   • list_branches() - Show all local and remote branches",
+                "   • list_conflicts() - Show files with merge conflicts",
+                "   • list_git_accounts() - Show available authentication methods",
                 "",
-                "⚡ Conflicts:",
-                "   - resolve_conflict(file, strategy): Fix merge conflicts",
-                "   - strategy='ours' (keep our version) or 'theirs' (keep their version)",
+                "💾 Staging & Committing:",
+                "   • git_add(files) - Stage specific files (use '.' for all)",
+                "   • git_commit(message, add_all) - Commit changes with message",
+                "",
+                "🚀 Synchronization:",
+                "   • git_push(remote, branch, force) - Push to remote",
+                "   • git_pull(remote, branch) - Pull from remote",
+                "",
+                "🌿 Branch Management:",
+                "   • create_branch(name, checkout) - Create new branch",
+                "   • switch_branch(name) - Switch to existing branch",
+                "   • delete_branch(name, force) - Remove branch",
                 "",
                 "🌐 GitHub Operations:",
-                "   - create_repo: Create new GitHub repository",
-                "   - create_pull_request: Propose changes for review",
+                "   • create_pull_request(...) - Create PR via API",
+                "   • list_pull_requests(...) - List PRs",
+                "   • create_issue(...) - Create issue",
+                "   • get_repo_info(owner, repo) - Get repo details",
                 "",
-                "BEST WORKFLOWS:",
+                "COMMUNICATION STYLE:",
+                "- Always call the appropriate tool first",
+                "- Then explain the results in a friendly way",
+                "- Suggest next steps if helpful",
+                "- Be conversational but accurate",
                 "",
-                "When user wants to save and share work:",
-                "   1. Check status first (git_status)",
-                "   2. Commit changes (git_commit - auto-message if needed)",
-                "   3. Push to remote (git_push - shows account)",
+                "EXAMPLES:",
+                "User: 'show git status'",
+                "You: [Call git_status() tool] 'Here's your repository status: ...'",
                 "",
-                "When user encounters conflicts:",
-                "   1. List conflicted files (list_conflicts)",
-                "   2. Decide resolution strategy",
-                "   3. Resolve each conflict (resolve_conflict)",
-                "   4. Commit the resolution",
+                "User: 'what branches do we have?'",
+                "You: [Call list_branches() tool] 'You have these branches: ...'",
                 "",
-                "REMEMBER: Focus on what user wants to accomplish, not Git terminology.",
-                "Help them understand the process in clear terms."
+                "User: 'commit my changes'",
+                "You: [Call git_status() first to see what changed, then git_commit() with a good message]"
             ],
-            description="Specialized agent for comprehensive Git and GitHub operations"
+            description="Git & GitHub operations assistant"
         )
         
         print("  ✅ Git Operations Agent created")
@@ -1437,6 +1662,19 @@ Agent:"""
         
         return response
     
+    def _clean_response(self, content: str, query: str) -> str:
+        """Clean response - just return as-is for natural conversation.
+        
+        Args:
+            content: Raw agent response
+            query: Original user query
+            
+        Returns:
+            Content unchanged
+        """
+        # Return content as-is for natural conversation
+        return content
+    
     def _process_single(self, query: str, agent_type: str) -> Dict[str, Any]:
         """Process query with single agent.
         
@@ -1465,6 +1703,9 @@ Agent:"""
                 content = response.get('content', str(response))
             else:
                 content = str(response)
+            
+            # Clean response to extract essential format
+            content = self._clean_response(content, query)
             
             return {
                 'ok': True,

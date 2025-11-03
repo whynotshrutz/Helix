@@ -517,7 +517,7 @@ class HelixChatProvider {
     <div id="attachments-container"></div>
     <div id="input-container">
         <button id="attach-button" title="Attach files or folders">📎</button>
-        <textarea id="message-input" placeholder="Ask Helix anything or drop files here..." rows="1"></textarea>
+        <textarea id="message-input" placeholder="Ask shruti anything" rows="1"></textarea>
         <button id="send-button">Send</button>
     </div>
 

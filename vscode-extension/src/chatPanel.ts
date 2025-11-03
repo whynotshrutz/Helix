@@ -182,15 +182,17 @@ export class HelixChatProvider implements vscode.WebviewViewProvider {
         try {
             // Get workspace folder for file operations
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+            const workspacePath = workspaceFolder?.uri.fsPath || '.';
             
-            // Send request to backend with enhanced message
+            // Send request to backend with enhanced message and workspace path
             const response = await fetch(`${this._backendUrl}/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt: enhancedMessage,  // Send enhanced message with file context
                     mode: 'chat',
-                    stream: false
+                    stream: false,
+                    workspace_dir: workspacePath  // Send current workspace directory
                 })
             });
             
@@ -566,7 +568,7 @@ export class HelixChatProvider implements vscode.WebviewViewProvider {
     <div id="attachments-container"></div>
     <div id="input-container">
         <button id="attach-button" title="Attach files or folders">📎</button>
-        <textarea id="message-input" placeholder="Ask Helix anything or drop files here..." rows="1"></textarea>
+        <textarea id="message-input" placeholder="Ask shruti anything" rows="1"></textarea>
         <button id="send-button">Send</button>
     </div>
 
