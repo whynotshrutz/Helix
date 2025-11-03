@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: helix-config
+data:
+  CHROMA_HOST: "localhost"
+  LOG_LEVEL: "info"
+  MAX_RETRIES: "3"
+  TIMEOUT_SECONDS: "300"

@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helix-backend
+  labels:
+    app: helix-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: helix-backend
+  template:
+    metadata:
+      labels:
+        app: helix-backend
+    spec:
+      containers:
+      - name: helix-backend
+        image: <YOUR_ECR_REGISTRY>/helix-backend:latest
+        ports:
+        - containerPort: 8001
+        env:
+        - name: NVIDIA_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: helix-secrets
+              key: nvidia-api-key
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: helix-secrets
+              key: github-token
+        - name: CHROMA_HOST
+          value: "localhost"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 40
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helix-sandbox-worker
+  labels:
+    app: helix-sandbox-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: helix-sandbox-worker
+  template:
+    metadata:
+      labels:
+        app: helix-sandbox-worker
+    spec:
+      containers:
+      - name: sandbox-worker
+        image: <YOUR_ECR_REGISTRY>/helix-sandbox-worker:latest
+        ports:
+        - containerPort: 5000
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 20
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helix-code-executor
+  labels:
+    app: helix-code-executor
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: helix-code-executor
+  template:
+    metadata:
+      labels:
+        app: helix-code-executor
+    spec:
+      containers:
+      - name: code-executor
+        image: <YOUR_ECR_REGISTRY>/helix-code-executor:latest
+        ports:
+        - containerPort: 8888
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8888
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8888
+          initialDelaySeconds: 5
+          periodSeconds: 10

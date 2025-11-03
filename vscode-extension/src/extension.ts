@@ -1,7 +1,15 @@
 import * as vscode from 'vscode';
 import { HelixChatProvider } from './chatPanel';
 
-const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://127.0.0.1:8001';
+function getBackendUrl(): string {
+    // Priority: VS Code settings > Environment variable > Default
+    const config = vscode.workspace.getConfiguration('helix');
+    const configUrl = config.get<string>('backendUrl');
+    const envUrl = process.env.HELIX_BACKEND_URL;
+    return configUrl || envUrl || 'http://127.0.0.1:8001';
+}
+
+const BACKEND_URL = getBackendUrl();
 
 async function* streamSSE(url: string, body: any): AsyncGenerator<any> {
     const response = await fetch(url, {

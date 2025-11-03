@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: helix-backend-service
+  labels:
+    app: helix-backend
+spec:
+  type: LoadBalancer
+  selector:
+    app: helix-backend
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8001
+    protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: helix-sandbox-worker-service
+  labels:
+    app: helix-sandbox-worker
+spec:
+  type: ClusterIP
+  selector:
+    app: helix-sandbox-worker
+  ports:
+  - name: http
+    port: 5000
+    targetPort: 5000
+    protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: helix-code-executor-service
+  labels:
+    app: helix-code-executor
+spec:
+  type: ClusterIP
+  selector:
+    app: helix-code-executor
+  ports:
+  - name: http
+    port: 8888
+    targetPort: 8888
+    protocol: TCP

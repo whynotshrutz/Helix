@@ -71,6 +71,10 @@ workspace/
 *.pem
 *.crt
 
+# Kubernetes secrets - NEVER COMMIT!
+k8s/secrets.yaml
+k8s/*-secrets.yaml
+
 # Ignore model checkpoints and large files
 *.pt
 *.ckpt

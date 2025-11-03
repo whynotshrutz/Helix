@@ -1,30 +1,47 @@
-# Dockerfile for Helix backend
+# Production Dockerfile for Helix Backend
 FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONPATH=/app
 
 WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
+    git \
+    curl \
     gcc \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
-COPY src/ ./src/
+# Copy application code
+COPY . .
 
-# Create data directory
-RUN mkdir -p /data/chroma /data/db
+# Create necessary directories with proper permissions
+RUN mkdir -p tmp/chroma workspace .helix && \
+    chmod -R 755 tmp workspace .helix
 
-# Set environment
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
+# Create non-root user for security
+RUN useradd -m -u 1000 helix && \
+    chown -R helix:helix /app
+
+USER helix
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8001
 
-# Run server
-CMD ["python", "-m", "uvicorn", "helix.server:app", "--host", "0.0.0.0", "--port", "8000"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+# Run the server
+CMD ["python", "run_server.py"]
