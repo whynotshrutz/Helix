@@ -516,10 +516,23 @@ class HelixChatProvider {
     </div>
     <div id="attachments-container"></div>
     <div id="input-container">
+    <div id="left-controls">
         <button id="attach-button" title="Attach files or folders">📎</button>
-        <textarea id="message-input" placeholder="Ask Helix anything or drop files here..." rows="1"></textarea>
-        <button id="send-button">Send</button>
     </div>
+
+    <textarea id="message-input" placeholder="Ask Helix anything or drop files here..." rows="1"></textarea>
+
+    <!-- Send button (image). We show send by default and pause while loading -->
+    <div id="send-controls">
+        <button id="send-button" title="Send" aria-label="Send" type="button">
+            <img id="send-img" src="${sendIcon}" alt="Send" />
+        </button>
+        <button id="pause-button" title="Pause" aria-label="Pause" type="button" style="display:none;">
+            <img id="pause-img" src="${pauseIcon}" alt="Pause" />
+        </button>
+    </div>
+</div>
+
 
     <script>
         const vscode = acquireVsCodeApi();
