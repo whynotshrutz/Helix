@@ -52,7 +52,7 @@
       "properties": {
         "helix.backendUrl": {
           "type": "string",
-          "default": "http://127.0.0.1:8001",
+          "default": "http://0.0.0.0:8001",
           "description": "Helix backend server URL. Set this to your production server URL when deployed."
         }
       }

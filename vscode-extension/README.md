@@ -48,7 +48,7 @@ export HELIX_BACKEND_URL=http://your-backend-server.com
 set HELIX_BACKEND_URL=http://your-backend-server.com
 ```
 
-**Default:** `http://127.0.0.1:8001` (local development)
+**Default:** `http://0.0.0.0:8001` (local development)
 
 ## Usage
 

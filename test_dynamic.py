@@ -7,7 +7,7 @@ import requests
 import json
 import time
 
-BASE_URL = "http://127.0.0.1:8001"
+BASE_URL = "http://0.0.0.0:8001"
 
 def test_server():
     """Check server health"""

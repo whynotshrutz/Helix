@@ -44,15 +44,16 @@ This guide covers deploying Helix to AWS Elastic Kubernetes Service (EKS).
 If you don't have an EKS cluster yet:
 
 ```bash
-# Using eksctl (recommended)
+# Using eksctl (optimized for AWS lab limits)
+# Lab constraints: 1 cluster, max 2 nodes, only g6e.xlarge/g5.xlarge allowed
 eksctl create cluster \
   --name helix-cluster \
   --region us-east-1 \
   --nodegroup-name helix-nodes \
-  --node-type t3.medium \
-  --nodes 3 \
-  --nodes-min 2 \
-  --nodes-max 5 \
+  --node-type g5.xlarge \
+  --nodes 2 \
+  --nodes-min 1 \
+  --nodes-max 2 \
   --managed
 
 # Or using AWS Console:

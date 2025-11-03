@@ -102,7 +102,7 @@ def start_backend(mode="local"):
         cmd = [
             "python", "-m", "uvicorn",
             "helix.server:app",
-            "--host", "127.0.0.1",
+            "--host", "0.0.0.0",
             "--port", "8000",
             "--reload"
         ]

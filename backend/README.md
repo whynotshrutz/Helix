@@ -51,7 +51,7 @@ This starts:
 python docker/code-executor/executor.py &
 
 # Start backend
-python -m uvicorn helix.server:app --host 127.0.0.1 --port 8000 --reload
+python -m uvicorn helix.server:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ## Usage
@@ -106,7 +106,7 @@ data: [DONE]
 | `NIM_EMBEDDING_URL` | NIM embedding endpoint | `http://localhost:8002` |
 | `CHROMA_PERSIST_DIR` | ChromaDB storage path | `./tmp/chroma` |
 | `CODE_EXECUTOR_URL` | Code executor service URL | `http://localhost:8888` |
-| `FASTMCP_BIND_HOST` | Server bind address | `127.0.0.1` |
+| `FASTMCP_BIND_HOST` | Server bind address | `0.0.0.0` |
 | `FASTMCP_BIND_PORT` | Server port | `8000` |
 
 ### Agent Configuration

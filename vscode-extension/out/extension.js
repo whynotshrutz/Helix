@@ -4,7 +4,7 @@ exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = require("vscode");
 const chatPanel_1 = require("./chatPanel");
-const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://127.0.0.1:8001';
+const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://0.0.0.0:8001';
 async function* streamSSE(url, body) {
     var _a;
     const response = await fetch(url, {

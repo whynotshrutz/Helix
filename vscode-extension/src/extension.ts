@@ -6,7 +6,7 @@ function getBackendUrl(): string {
     const config = vscode.workspace.getConfiguration('helix');
     const configUrl = config.get<string>('backendUrl');
     const envUrl = process.env.HELIX_BACKEND_URL;
-    return configUrl || envUrl || 'http://127.0.0.1:8001';
+    return configUrl || envUrl || 'http://0.0.0.0:8001';
 }
 
 const BACKEND_URL = getBackendUrl();

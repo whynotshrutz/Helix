@@ -94,7 +94,7 @@ For production deployment to AWS EKS, see [DEPLOYMENT.md](DEPLOYMENT.md)
 - `CHROMA_HOST` - ChromaDB host (default: localhost)
 
 **VS Code Extension:**
-- `HELIX_BACKEND_URL` - Backend URL (default: http://127.0.0.1:8001)
+- `HELIX_BACKEND_URL` - Backend URL (default: http://0.0.0.0:8001)
 
 ### VS Code Extension Setup
 

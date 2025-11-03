@@ -369,4 +369,4 @@ async def store_git_pat(req: GitPATRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("helix.server:app", host=os.getenv("HELIX_BIND_HOST", "127.0.0.1"), port=int(os.getenv("HELIX_BIND_PORT", 8001)), reload=False)
+    uvicorn.run("helix.server:app", host=os.getenv("HELIX_BIND_HOST", "0.0.0.0"), port=int(os.getenv("HELIX_BIND_PORT", 8001)), reload=False)
