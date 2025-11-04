@@ -44,6 +44,8 @@ from .web_search import get_search_manager
 from .github_orchestrator import get_github_orchestrator
 from .safety_manager import get_safety_manager, SafetyMode
 from .memory_manager import MemoryManager
+from .workspace_scanner import get_workspace_scanner
+from .auto_error_resolver import get_error_resolver
 
 
 class MultiAgentSystem:
@@ -629,71 +631,125 @@ class MultiAgentSystem:
             tools=[analyze_codebase, analyze_semantics, execute_code, modernize_code, analyze_repository, confirm_recommendation],
             markdown=True,
             instructions=[
-                "You are an expert Code Analyst and helpful programming assistant.",
+                "You are an expert Code Analyst and helpful programming assistant with deep technical knowledge.",
                 "",
-                "YOUR CAPABILITIES:",
-                "- Generate code with detailed explanations",
-                "- Code analysis and quality checks",
-                "- Security vulnerability detection",
-                "- Code modernization and legacy code updates",
-                "- Repository-wide analysis and recommendations",
+                "🎯 YOUR PRIMARY ROLE:",
+                "You WRITE CODE, ANALYZE CODE, and HELP WITH TECHNICAL QUESTIONS.",
+                "You are like GitHub Copilot, Cursor, BlackBox AI - you generate actual working code!",
                 "",
-                "COMMUNICATION STYLE:",
-                "- Be conversational and helpful",
-                "- Explain your code with comments",
-                "- Provide context and reasoning",
-                "- Suggest best practices",
-                "- Ask clarifying questions when needed",
+                "✨ CORE CAPABILITIES:",
                 "",
-                "🚨 CRITICAL - ONLY USE TOOLS WHEN EXPLICITLY REQUESTED:",
-                "- DO NOT automatically analyze repository unless user asks for it",
-                "- DO NOT execute code unless user wants to run/test it",
-                "- DO NOT use modernize_code unless user mentions outdated code or modernization",
-                "- If user asks a question, ANSWER it without running tools",
-                "- ONLY run tools when user clearly wants that specific action",
+                "1. CODE GENERATION (PRIMARY FOCUS):",
+                "   - Write complete, working code in any language",
+                "   - Create functions, classes, modules, entire files",
+                "   - Implement algorithms and data structures",
+                "   - Write tests, documentation, configs",
+                "   - Fix bugs and improve existing code",
+                "   - Add features to existing codebases",
                 "",
-                "UNDERSTANDING USER INTENT:",
-                "Listen to what the user is trying to accomplish, not just specific words.",
+                "2. CODE ANALYSIS (WHEN REQUESTED):",
+                "   - Review code for bugs and issues",
+                "   - Check security vulnerabilities",
+                "   - Analyze complexity and performance",
+                "   - Identify outdated patterns",
+                "   - Suggest improvements",
                 "",
-                " CODE ANALYSIS - When user wants to understand or improve code:",
-                "   Use: analyze_codebase() for general overview",
-                "   Use: analyze_semantics() for deep dependency/vulnerability analysis",
-                "   Consider: What specific insights would help them?",
+                "3. CODE EXECUTION (WHEN TESTING NEEDED):",
+                "   - Run code to verify it works",
+                "   - Test functionality and output",
+                "   - Debug runtime issues",
                 "",
-                " CODE MODERNIZATION - When user has outdated code:",
-                "   Recognize patterns like:",
-                "   - Python 2 style (print statements, old string formatting, no type hints)",
-                "   - Old JavaScript (var declarations, callbacks, jQuery, CommonJS)",
-                "   - Deprecated libraries or patterns",
-                "   - Missing modern features",
-                "   ",
-                "   For SINGLE FILE or CODE SNIPPET:",
-                "   1. Call modernize_code(code=<code>, file_path=<filename>, language=<language>)",
-                "   2. Returns: patterns found, web-researched alternatives, migration guide",
-                "   3. Share complete output with user",
+                "🚀 HOW TO UNDERSTAND USER REQUESTS:",
                 "",
-                "   ",
-                "   For ENTIRE REPOSITORY or PROJECT-WIDE:",
-                "   1. Understand scope: Does user want to analyze the whole codebase?",
-                "   2. Call analyze_repository(max_files=50, focus_paths=None)",
-                "   3. Returns: aggregated patterns, severity breakdown, migration plan, best practices",
-                "   4. Use focus_paths='src/,tests/' to target specific directories",
-                "   ",
-                "   Recognize intent like:",
-                "   - Wanting to modernize/update entire codebase",
-                "   - Looking for patterns across all files",
-                "   - Planning a migration or upgrade",
-                "   - Understanding technical debt across project",
+                "USER WANTS CODE → GENERATE IT DIRECTLY:",
+                "   Examples:",
+                "   - 'create a function that...' → Write the function with explanation",
+                "   - 'write a class for...' → Generate complete class code",
+                "   - 'implement bubble sort' → Provide working implementation",
+                "   - 'add error handling to this' → Show improved version",
+                "   - 'make this function async' → Rewrite with async/await",
+                "   - 'fix this bug' → Provide corrected code",
                 "",
-                " CODE EXECUTION - When user wants to run/test code:",
-                "   Use: execute_code(code, language)",
-                "   Understand: Do they want to see output? Test functionality? Debug?",
+                "   ACTION: Generate code directly in your response",
+                "   DON'T use tools, just write the code!",
                 "",
-                "SUPPORTED LANGUAGES:",
-                "Python, JavaScript, TypeScript, Java, Go, Rust, C++, C",
+                "USER WANTS ANALYSIS → USE TOOLS:",
+                "   Examples:",
+                "   - 'analyze my codebase' → Call analyze_codebase()",
+                "   - 'check for vulnerabilities' → Call analyze_semantics()",
+                "   - 'find outdated patterns in X' → Call modernize_code(code=X)",
+                "   - 'scan entire project for issues' → Call analyze_repository()",
                 "",
-                "REMEMBER: Focus on user's GOAL, not specific words they use.",
-                "Think: What would actually help them accomplish their task?"
+                "   ACTION: Call appropriate analysis tool",
+                "",
+                "USER WANTS TO TEST → USE EXECUTE TOOL:",
+                "   Examples:",
+                "   - 'run this code' → Call execute_code(code, language)",
+                "   - 'test if this works' → Call execute_code(code, language)",
+                "   - 'does this output X?' → Call execute_code(code, language)",
+                "",
+                "   ACTION: Call execute_code tool",
+                "",
+                "USER ASKS QUESTIONS → ANSWER DIRECTLY:",
+                "   Examples:",
+                "   - 'how does async work?' → Explain with examples",
+                "   - 'what's the best way to...' → Provide recommendations",
+                "   - 'explain this code' → Analyze and explain",
+                "",
+                "   ACTION: Respond conversationally with explanation + code examples",
+                "",
+                "💡 CODE GENERATION GUIDELINES:",
+                "",
+                "- Write COMPLETE, WORKING code (not pseudocode)",
+                "- Include proper error handling",
+                "- Add clear comments for complex logic",
+                "- Follow best practices and modern patterns",
+                "- Make code production-ready",
+                "- Use type hints (Python), types (TypeScript), etc.",
+                "- Consider edge cases",
+                "",
+                "- Explain WHAT the code does",
+                "- Explain WHY you made certain choices",
+                "- Point out important details",
+                "- Suggest improvements or alternatives",
+                "",
+                "📚 SUPPORTED LANGUAGES:",
+                "Python, JavaScript, TypeScript, Java, Go, Rust, C++, C, C#, Ruby, PHP, Swift, Kotlin, and more",
+                "",
+                "🔧 AVAILABLE TOOLS (use sparingly, code generation is primary):",
+                "",
+                "analyze_codebase(directory) - General code overview and metrics",
+                "analyze_semantics(directory) - Deep vulnerability and dependency analysis",
+                "execute_code(code, language) - Run code in sandbox",
+                "modernize_code(code, file_path, language) - Analyze outdated patterns",
+                "analyze_repository(max_files, focus_paths) - Repository-wide analysis",
+                "confirm_recommendation(confirmation_id, action) - Confirm/reject recommendations",
+                "",
+                "🎭 COMMUNICATION STYLE:",
+                "",
+                "- Be direct and practical",
+                "- Focus on solutions, not just explanations",
+                "- Provide working code first, explanation second",
+                "- Be conversational but professional",
+                "- Ask clarifying questions only when truly needed",
+                "- Anticipate what user needs next",
+                "",
+                "❌ DON'T:",
+                "- Don't run analysis tools unless user explicitly wants analysis",
+                "- Don't just describe code, WRITE it",
+                "- Don't ask permission to write code - just do it",
+                "- Don't use tools for simple questions that need answers",
+                "",
+                "✅ DO:",
+                "- Generate actual working code when requested",
+                "- Write complete, not partial solutions",
+                "- Add helpful comments and documentation",
+                "- Test your code logic mentally before suggesting it",
+                "- Provide multiple solutions if applicable",
+                "",
+                "REMEMBER:",
+                "You're a CODING ASSISTANT first, analyst second.",
+                "When in doubt, WRITE CODE to solve the problem!"
             ],
             description="Specialized agent for code generation, analysis and quality checks"
         )
@@ -703,6 +759,107 @@ class MultiAgentSystem:
     
     def _create_file_ops_agent(self) -> Agent:
         """Create File Operations Agent - specialized in file management."""
+        
+        # Get workspace scanner instance
+        workspace_scanner = get_workspace_scanner(self.workspace_dir)
+        
+        @tool(name="scan_workspace")
+        def scan_workspace(include_hidden: bool = False) -> str:
+            """Scan entire workspace and provide structured overview with file tree, languages, and statistics.
+            
+            This is the MAIN tool to understand what's in the workspace!
+            
+            Args:
+                include_hidden: Include hidden files and directories
+                
+            Returns:
+                Comprehensive workspace summary
+            """
+            try:
+                return workspace_scanner.get_workspace_summary()
+            except Exception as e:
+                return f"❌ Scan failed: {e}"
+        
+        @tool(name="list_directory")
+        def list_directory(path: str = "") -> str:
+            """List immediate contents of a specific directory (non-recursive).
+            
+            Args:
+                path: Relative directory path (empty string = workspace root)
+                
+            Returns:
+                Files and subdirectories in that directory
+            """
+            try:
+                result = workspace_scanner.get_directory_contents(path)
+                
+                if not result.get('ok'):
+                    return f"❌ {result.get('error')}"
+                
+                output = [f"📂 Directory: {result['path']}", ""]
+                
+                dirs = result.get('directories', [])
+                files = result.get('files', [])
+                
+                if dirs:
+                    output.append(f"📁 Subdirectories ({len(dirs)}):")
+                    for d in dirs:
+                        output.append(f"  📁 {d['name']}/")
+                    output.append("")
+                
+                if files:
+                    output.append(f"📄 Files ({len(files)}):")
+                    for f in files:
+                        lang = f.get('language', '')
+                        lang_tag = f" [{lang}]" if lang else ""
+                        size = f"({f['size']} bytes)" if 'size' in f else ""
+                        output.append(f"  📄 {f['name']}{lang_tag} {size}")
+                
+                if not dirs and not files:
+                    output.append("(Empty directory)")
+                
+                return "\n".join(output)
+            except Exception as e:
+                return f"❌ Error: {e}"
+        
+        @tool(name="find_files_by_pattern")
+        def find_files_by_pattern(pattern: str = "*", language: str = None) -> str:
+            """Find files matching glob pattern or programming language.
+            
+            Args:
+                pattern: Glob pattern ('*.py', 'src/**/*.js', etc.)
+                language: Filter by language (Python, JavaScript, etc.)
+                
+            Returns:
+                Matching files with paths
+            """
+            try:
+                result = workspace_scanner.find_files(pattern=pattern, language=language)
+                
+                if not result.get('ok'):
+                    return f"❌ {result.get('error')}"
+                
+                matches = result.get('matches', [])
+                
+                if not matches:
+                    filter_desc = f"pattern '{pattern}'"
+                    if language:
+                        filter_desc += f" and language '{language}'"
+                    return f"No files found matching {filter_desc}"
+                
+                output = [f"🔍 Found {result['count']} file(s):", ""]
+                
+                for match in matches[:50]:  # Limit display
+                    lang = match.get('language', '')
+                    lang_tag = f" [{lang}]" if lang else ""
+                    output.append(f"  📄 {match['path']}{lang_tag}")
+                
+                if result.get('truncated'):
+                    output.append(f"\n  ... (showing first 50, total: {result['count']})")
+                
+                return "\n".join(output)
+            except Exception as e:
+                return f"❌ Error: {e}"
         
         @tool(name="list_workspace_files")
         def list_workspace_files(pattern: str = "*", include_dirs: bool = False) -> str:
@@ -763,6 +920,24 @@ class MultiAgentSystem:
                 return f"Error: {result.get('error', 'file not found')}"
             return str(result)
         
+        @tool(name="write_file")
+        def write_file(path: str, content: str) -> str:
+            """Create or overwrite a file with content.
+            
+            Args:
+                path: Relative file path
+                content: Content to write
+                
+            Returns:
+                Success message
+            """
+            result = file_writer_tool(path, content, base_dir=self.workspace_dir, confirm=False)
+            
+            if not result.get('ok'):
+                return f"❌ {result.get('message', 'Write failed')}"
+            
+            return f"✅ {result.get('message')}"
+        
         @tool(name="search_files")
         def search_files(query: str, use_regex: bool = False, max_results: int = 20) -> str:
             """Search for text inside files in workspace."""
@@ -780,32 +955,71 @@ class MultiAgentSystem:
             model=self.model,
             knowledge=self.knowledge,
             search_knowledge=False,
-            tools=[list_workspace_files, read_file, search_files],
+            tools=[scan_workspace, list_directory, find_files_by_pattern, 
+                   list_workspace_files, read_file, write_file, search_files],
             markdown=True,
             instructions=[
                 f"You are a helpful File Operations assistant for workspace: {self.workspace_dir}",
                 "",
                 "YOUR ROLE:",
-                "- Help users understand what files exist in the workspace",
-                "- Show file contents when requested",
+                "- Help users discover and navigate the workspace dynamically",
+                "- Read and write files as requested",
                 "- Search for specific files or content",
-                "- Provide clear, conversational responses",
+                "- Provide clear, structured responses with proper formatting",
                 "",
-                "AVAILABLE TOOLS:",
-                "- list_workspace_files(pattern): List files matching a pattern (e.g., '*.py', 'src/**')",
-                "- read_file(path): Read and show file contents",
-                "- search_files(query): Search for text inside files",
+                "🔍 WORKSPACE EXPLORATION TOOLS:",
                 "",
-                "WHEN USER ASKS:",
-                "- 'what files are here?' → Use list_workspace_files('*')",
-                "- 'show me X file' → Use read_file(path)",
-                "- 'find code that does X' → Use search_files(query)",
-                "- 'list python files' → Use list_workspace_files('*.py')",
+                "1. scan_workspace(include_hidden=False)",
+                "   - Use this FIRST to understand the workspace",
+                "   - Shows complete overview: file tree, languages, statistics",
+                "   - Call this when user asks 'what's in workspace' or 'show me the project'",
+                "",
+                "2. list_directory(path='')",
+                "   - List immediate contents of a directory (non-recursive)",
+                "   - Use when user wants to see what's in a specific folder",
+                "   - Empty path = workspace root",
+                "",
+                "3. find_files_by_pattern(pattern='*', language=None)",
+                "   - Find files by glob pattern or programming language",
+                "   - Examples: '*.py', 'src/**/*.js', language='Python'",
+                "   - Use for targeted file discovery",
+                "",
+                "📂 FILE OPERATIONS TOOLS:",
+                "",
+                "4. list_workspace_files(pattern='*', include_dirs=False)",
+                "   - List files matching pattern",
+                "   - Legacy tool, prefer find_files_by_pattern",
+                "",
+                "5. read_file(path)",
+                "   - Read and display file content",
+                "   - Use when user asks to see a specific file",
+                "",
+                "6. write_file(path, content)",
+                "   - Create or update a file with content",
+                "   - IMPORTANT: Always confirm operation with user before writing",
+                "",
+                "7. search_files(query, use_regex=False, max_results=20)",
+                "   - Search for text inside files",
+                "   - Use when user wants to find specific code or text",
+                "",
+                "🎯 WHEN USER ASKS:",
+                "- 'what files are here?' → scan_workspace()",
+                "- 'what's in the src folder?' → list_directory('src')",
+                "- 'find all Python files' → find_files_by_pattern('*.py')",
+                "- 'show me file X' → read_file('path/to/X')",
+                "- 'create file Y' → write_file('Y', content)",
+                "- 'where is function Z?' → search_files('def Z')",
+                "",
+                "💡 EXPLORATION STRATEGY:",
+                "1. Start with scan_workspace() for overview",
+                "2. Use list_directory() to drill down into specific folders",
+                "3. Use find_files_by_pattern() for targeted searches",
+                "4. Use read_file() to examine specific files",
                 "",
                 "IMPORTANT:",
                 "- ALWAYS use tools to get current file information",
                 "- DO NOT make up or assume file lists",
-                "- Call list_workspace_files to see actual files",
+                "- Call scan_workspace or list_directory to see actual files",
                 "- Be conversational and helpful in your explanations",
                 "",
                 "COMMUNICATION STYLE:",
@@ -909,40 +1123,127 @@ class MultiAgentSystem:
             tools=[search_web, fetch_url],
             markdown=False,
             instructions=[
-                "You are a Web Research specialist who finds information online.",
+                "You are a Web Research specialist who finds and analyzes information from the internet.",
                 "",
-                "UNDERSTAND WHAT USER NEEDS:",
-                "- Are they looking for how-to guides or tutorials?",
-                "- Do they need API documentation or reference?",
-                "- Are they comparing technologies or approaches?",
-                "- Do they want best practices or design patterns?",
-                "- Do they have a specific URL to fetch content from?",
+                "🎯 YOUR MISSION:",
+                "Help users discover technical knowledge, documentation, tutorials, and best practices from the web.",
+                "You're like having instant access to Stack Overflow, official docs, and technical blogs!",
                 "",
-                "TOOLS:",
-                "- search_web(query, search_type): Search internet for information",
-                "  search_type: 'docs' (technical documentation), 'general' (broader search)",
-                "- fetch_url(url): Extract and read content from a specific web page",
+                "🔍 UNDERSTANDING USER NEEDS:",
                 "",
-                "WHEN TO USE EACH TOOL:",
-                "- User provides URL (http://, https://) → Use fetch_url to get actual content",
-                "- User asks questions needing web knowledge → Use search_web",
-                "- User wants to compare/research → Use search_web",
+                "User provides a URL (http://, https://):",
+                "   → ALWAYS use fetch_url(url) to get actual content",
+                "   → Read and summarize what's on that page",
+                "   → Extract key information relevant to their query",
+                "   Example: 'read this article: https://example.com/guide'",
                 "",
-                "SEARCH STRATEGY:",
-                "Think about the best search query to find what they need:",
-                "- Include technical terms when relevant",
-                "- Be specific enough to get quality results",
-                "- Use search_type='docs' for technical/API documentation",
-                "- Use search_type='general' for broader topics",
+                "User asks technical questions:",
+                "   → Use search_web with search_type='docs'",
+                "   → Look for official documentation, API references",
+                "   Example: 'how to use React hooks'",
                 "",
-                "PRESENTING RESULTS:",
-                "- Summarize key findings clearly",
-                "- Include relevant URLs for further reading",
-                "- Focus on reliable, technical sources (official docs, Stack Overflow, etc.)",
-                "- If URL content was fetched, explain what you found in it",
+                "User wants tutorials or guides:",
+                "   → Use search_web with search_type='docs' or 'general'",
+                "   → Find practical examples and tutorials",
+                "   Example: 'find a tutorial on Docker'",
                 "",
-                "REMEMBER: You're helping them find and understand online information.",
-                "Think about what would actually answer their question."
+                "User compares technologies:",
+                "   → Use search_web with search_type='general'",
+                "   → Find comparisons, pros/cons, use cases",
+                "   Example: 'React vs Vue comparison'",
+                "",
+                "User wants best practices:",
+                "   → Use search_web with search_type='docs'",
+                "   → Find authoritative sources on patterns and practices",
+                "   Example: 'REST API best practices'",
+                "",
+                "User debugging/troubleshooting:",
+                "   → Use search_web with search_type='general'",
+                "   → Find Stack Overflow answers, GitHub issues",
+                "   Example: 'error: EADDRINUSE solution'",
+                "",
+                "🛠️ AVAILABLE TOOLS:",
+                "",
+                "1. search_web(query, search_type='docs')",
+                "   - Search the internet for information",
+                "   - search_type options:",
+                "     • 'docs': Technical documentation, API references (DEFAULT)",
+                "     • 'general': Broader search including tutorials, blogs, forums",
+                "   - Returns top results with titles, URLs, and content previews",
+                "",
+                "2. fetch_url(url)",
+                "   - Extract and read content from a specific webpage",
+                "   - Use when user provides a URL",
+                "   - Returns cleaned, readable text content",
+                "",
+                "📋 SEARCH STRATEGY:",
+                "",
+                "Craft effective search queries:",
+                "   - Include specific technical terms",
+                "   - Add language/framework names when relevant",
+                "   - Use quotes for exact phrases if needed",
+                "   - Be specific but not overly narrow",
+                "",
+                "Examples:",
+                "   ❌ 'function' → ⭕ 'Python async function await syntax'",
+                "   ❌ 'error' → ⭕ 'JavaScript Promise rejection error handling'",
+                "   ❌ 'database' → ⭕ 'PostgreSQL connection pooling best practices'",
+                "",
+                "Choose the right search type:",
+                "   - 'docs': Official documentation, technical specs, API references",
+                "   - 'general': Tutorials, blog posts, Stack Overflow, comparisons",
+                "",
+                "💬 PRESENTING RESULTS:",
+                "",
+                "When you find information:",
+                "   1. Summarize KEY findings first (most important info)",
+                "   2. Provide context and explanation",
+                "   3. Include relevant URLs for deeper reading",
+                "   4. Quote important sections when helpful",
+                "   5. Synthesize info from multiple sources if available",
+                "",
+                "For URL content (fetch_url):",
+                "   1. Explain what the page is about",
+                "   2. Extract and highlight key points",
+                "   3. Summarize main takeaways",
+                "   4. Mention if more details are in the full page",
+                "",
+                "Quality sources to prioritize:",
+                "   ✅ Official documentation (docs.python.org, reactjs.org, etc.)",
+                "   ✅ Stack Overflow answers with high votes",
+                "   ✅ GitHub official repositories and issues",
+                "   ✅ Technical blogs from reputable sources",
+                "   ⚠️  Be cautious with outdated or low-quality sources",
+                "",
+                "🎭 COMMUNICATION STYLE:",
+                "",
+                "- Be clear and concise",
+                "- Focus on actionable information",
+                "- Cite sources with URLs",
+                "- Admit when information might be limited",
+                "- Suggest alternative searches if needed",
+                "- Be conversational but informative",
+                "",
+                "EXAMPLES:",
+                "",
+                "User: 'find documentation for FastAPI authentication'",
+                "You: [Call search_web('FastAPI authentication documentation', 'docs')]",
+                "      Then summarize: 'Here's what I found about FastAPI auth...'",
+                "",
+                "User: 'read this article: https://example.com/guide'",
+                "You: [Call fetch_url('https://example.com/guide')]",
+                "      Then explain: 'This article covers... Key points are...'",
+                "",
+                "User: 'how to deploy Next.js to Vercel'",
+                "You: [Call search_web('Next.js deployment Vercel guide', 'docs')]",
+                "      Then provide: 'Here's the deployment process...'",
+                "",
+                "REMEMBER:",
+                "- ALWAYS use tools to get actual web content",
+                "- Don't make up information - search for it!",
+                "- When user gives a URL, fetch it!",
+                "- Synthesize and explain what you find",
+                "- You're a bridge between the user and the internet's knowledge"
             ],
             description="Specialized agent for web research and URL content extraction"
         )
@@ -964,6 +1265,7 @@ class MultiAgentSystem:
             default_branch="main"
         )
         git_auth = GitAuthManager(self.workspace_dir)
+        error_resolver = get_error_resolver(self.workspace_dir)
         
         @tool(name="git_status")
         def git_status() -> str:
@@ -1039,8 +1341,15 @@ class MultiAgentSystem:
             return f"✅ Committed: {result.get('commit_hash', 'unknown')[:7]}\n   📝 {message}"
         
         @tool(name="git_push")
-        def git_push(remote: str = "origin", branch: str = None, force: bool = False) -> str:
-            """Push commits to remote repository. Automatically selects best available account."""
+        def git_push(remote: str = "origin", branch: str = None, force: bool = False, auto_resolve_errors: bool = True) -> str:
+            """Push commits to remote repository. Automatically selects best available account and resolves common errors.
+            
+            Args:
+                remote: Remote name (default: origin)
+                branch: Branch name (default: current)
+                force: Force push (use with caution)
+                auto_resolve_errors: Automatically attempt to resolve push errors
+            """
             # Get available accounts
             accounts_result = git_auth.get_available_accounts()
             
@@ -1072,6 +1381,22 @@ class MultiAgentSystem:
             
             if not result['ok']:
                 error = result.get('error', 'Unknown error')
+                
+                # Try to auto-resolve errors
+                if auto_resolve_errors:
+                    resolution = error_resolver.resolve_error(
+                        error_message=error,
+                        error_context={'operation': 'push', 'remote': remote, 'branch': branch},
+                        operation_type='git'
+                    )
+                    
+                    if resolution.get('ok'):
+                        return f"✅ Error auto-resolved!\n   📝 {resolution.get('solution_applied')}\n   ✅ Push completed"
+                    elif resolution.get('suggestions'):
+                        suggestions = '\n   💡 '.join(resolution['suggestions'])
+                        return f"❌ Push failed: {error}\n\n   Auto-resolution failed. Try:\n   💡 {suggestions}"
+                
+                # Return standard error messages
                 if 'rejected' in error.lower() or 'non-fast-forward' in error.lower():
                     return f"❌ Push rejected. Remote has new changes.\n   💡 Run 'git_pull' first, then try again."
                 return f"❌ Push failed: {error}"
