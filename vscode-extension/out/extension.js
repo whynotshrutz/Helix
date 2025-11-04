@@ -4,7 +4,14 @@ exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = require("vscode");
 const chatPanel_1 = require("./chatPanel");
-const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://0.0.0.0:8001';
+function getBackendUrl() {
+    // Priority: VS Code settings > Environment variable > Default
+    const config = vscode.workspace.getConfiguration('helix');
+    const configUrl = config.get('backendUrl');
+    const envUrl = process.env.HELIX_BACKEND_URL;
+    return configUrl || envUrl || 'http://3.93.17.130:8001';
+}
+const BACKEND_URL = getBackendUrl();
 async function* streamSSE(url, body) {
     var _a;
     const response = await fetch(url, {

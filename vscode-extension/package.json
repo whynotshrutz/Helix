@@ -28,7 +28,6 @@
     "Machine Learning",
     "Other"
   ],
-  "icon": "icon.png",
   "engines": {
     "vscode": "^1.70.0"
   },
@@ -52,7 +51,7 @@
       "properties": {
         "helix.backendUrl": {
           "type": "string",
-          "default": "http://0.0.0.0:8001",
+          "default": "http://3.93.17.130:8001",
           "description": "Helix backend server URL. Set this to your production server URL when deployed."
         }
       }
