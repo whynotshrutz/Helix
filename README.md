@@ -114,6 +114,37 @@ npm run build
 # Install the extension: code --install-extension helix-mcp-client-1.0.0.vsix
 ```
 
+### Production Deployment (EC2/Cloud)
+
+**Backend (Already Deployed):**
+```
+http://3.93.17.130:8001
+```
+
+**Install Extension (Pre-built with production URL):**
+
+Option 1 - Via VS Code UI:
+```
+1. Download: vscode-extension/helix-mcp-client-1.0.0.vsix
+2. Press Ctrl+Shift+P
+3. Type: "Extensions: Install from VSIX"
+4. Select the downloaded .vsix file
+5. Reload VS Code
+```
+
+Option 2 - Via Command Line:
+```bash
+code --install-extension helix-mcp-client-1.0.0.vsix
+```
+
+Option 3 - Download from GitHub:
+```bash
+curl -L -o helix.vsix https://github.com/whynotshrutz/Helix/raw/main/vscode-extension/helix-mcp-client-1.0.0.vsix
+code --install-extension helix.vsix
+```
+
+**The extension is pre-configured to connect to the production backend!**
+
 ### Docker Compose
 
 ```bash

@@ -2,14 +2,35 @@ import * as vscode from 'vscode';
 import { HelixChatProvider } from './chatPanel';
 
 function getBackendUrl(): string {
-    // Priority: VS Code settings > Environment variable > Default
+    // Priority: VS Code settings > Environment variable > Default (Production)
     const config = vscode.workspace.getConfiguration('helix');
     const configUrl = config.get<string>('backendUrl');
     const envUrl = process.env.HELIX_BACKEND_URL;
-    return configUrl || envUrl || 'http://0.0.0.0:8001';
+    const defaultUrl = 'http://3.93.17.130:8001';
+    
+    const url = configUrl || envUrl || defaultUrl;
+    // Ensure no trailing slash
+    return url.replace(/\/$/, '');
 }
 
 const BACKEND_URL = getBackendUrl();
+
+// Log backend URL on activation
+console.log(`🌐 Helix Backend URL: ${BACKEND_URL}`);
+
+async function testBackendConnection(url: string): Promise<boolean> {
+    try {
+        const response = await fetch(`${url}/health`, {
+            method: 'GET',
+            signal: AbortSignal.timeout(5000) // 5 second timeout
+        });
+        const data = await response.json() as { status?: string };
+        return response.ok && data.status === 'healthy';
+    } catch (error) {
+        console.error('Backend connection test failed:', error);
+        return false;
+    }
+}
 
 async function* streamSSE(url: string, body: any): AsyncGenerator<any> {
     const response = await fetch(url, {
@@ -50,7 +71,24 @@ async function* streamSSE(url: string, body: any): AsyncGenerator<any> {
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('🚀 Helix AI extension is now active!');
+    console.log(`🌐 Backend URL: ${BACKEND_URL}`);
     const out = vscode.window.createOutputChannel('Helix AI');
+
+    // Test backend connection on activation
+    testBackendConnection(BACKEND_URL).then(isConnected => {
+        if (isConnected) {
+            vscode.window.showInformationMessage('✅ Helix AI: Connected to backend');
+        } else {
+            vscode.window.showWarningMessage(
+                `⚠️ Helix AI: Cannot connect to backend at ${BACKEND_URL}. Check if backend is running.`,
+                'Open Settings'
+            ).then(selection => {
+                if (selection === 'Open Settings') {
+                    vscode.commands.executeCommand('workbench.action.openSettings', 'helix.backendUrl');
+                }
+            });
+        }
+    });
 
     // Register chat panel provider
     const chatProvider = new HelixChatProvider(context.extensionUri, BACKEND_URL);

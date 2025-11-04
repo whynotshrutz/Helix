@@ -4,7 +4,33 @@ exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = require("vscode");
 const chatPanel_1 = require("./chatPanel");
-const BACKEND_URL = process.env.HELIX_BACKEND_URL || 'http://0.0.0.0:8001';
+function getBackendUrl() {
+    // Priority: VS Code settings > Environment variable > Default (Production)
+    const config = vscode.workspace.getConfiguration('helix');
+    const configUrl = config.get('backendUrl');
+    const envUrl = process.env.HELIX_BACKEND_URL;
+    const defaultUrl = 'http://3.93.17.130:8001';
+    const url = configUrl || envUrl || defaultUrl;
+    // Ensure no trailing slash
+    return url.replace(/\/$/, '');
+}
+const BACKEND_URL = getBackendUrl();
+// Log backend URL on activation
+console.log(`🌐 Helix Backend URL: ${BACKEND_URL}`);
+async function testBackendConnection(url) {
+    try {
+        const response = await fetch(`${url}/health`, {
+            method: 'GET',
+            signal: AbortSignal.timeout(5000) // 5 second timeout
+        });
+        const data = await response.json();
+        return response.ok && data.status === 'healthy';
+    }
+    catch (error) {
+        console.error('Backend connection test failed:', error);
+        return false;
+    }
+}
 async function* streamSSE(url, body) {
     var _a;
     const response = await fetch(url, {
@@ -45,7 +71,21 @@ async function* streamSSE(url, body) {
 }
 function activate(context) {
     console.log('🚀 Helix AI extension is now active!');
+    console.log(`🌐 Backend URL: ${BACKEND_URL}`);
     const out = vscode.window.createOutputChannel('Helix AI');
+    // Test backend connection on activation
+    testBackendConnection(BACKEND_URL).then(isConnected => {
+        if (isConnected) {
+            vscode.window.showInformationMessage('✅ Helix AI: Connected to backend');
+        }
+        else {
+            vscode.window.showWarningMessage(`⚠️ Helix AI: Cannot connect to backend at ${BACKEND_URL}. Check if backend is running.`, 'Open Settings').then(selection => {
+                if (selection === 'Open Settings') {
+                    vscode.commands.executeCommand('workbench.action.openSettings', 'helix.backendUrl');
+                }
+            });
+        }
+    });
     // Register chat panel provider
     const chatProvider = new chatPanel_1.HelixChatProvider(context.extensionUri, BACKEND_URL);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider(chatPanel_1.HelixChatProvider.viewType, chatProvider));

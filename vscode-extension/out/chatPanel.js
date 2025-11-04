@@ -151,14 +151,16 @@ class HelixChatProvider {
         try {
             // Get workspace folder for file operations
             const workspaceFolder = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0];
-            // Send request to backend with enhanced message
+            const workspacePath = (workspaceFolder === null || workspaceFolder === void 0 ? void 0 : workspaceFolder.uri.fsPath) || '.';
+            // Send request to backend with enhanced message and workspace path
             const response = await fetch(`${this._backendUrl}/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt: enhancedMessage, // Send enhanced message with file context
                     mode: 'chat',
-                    stream: false
+                    stream: false,
+                    workspace_dir: workspacePath // Send current workspace directory
                 })
             });
             // Clear attachments after sending
