@@ -28,6 +28,9 @@ export class HelixChatProvider implements vscode.WebviewViewProvider {
 
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
+        // Automatically scan workspace when chat panel opens
+        this._scanWorkspaceOnOpen();
+
         // Handle messages from the webview
         webviewView.webview.onDidReceiveMessage(async data => {
             switch (data.type) {
@@ -51,6 +54,42 @@ export class HelixChatProvider implements vscode.WebviewViewProvider {
                     break;
             }
         });
+    }
+
+    private async _scanWorkspaceOnOpen() {
+        try {
+            const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+            if (!workspaceFolder) {
+                console.log('No workspace folder found');
+                return;
+            }
+
+            console.log(`🔍 Scanning workspace: ${workspaceFolder.uri.fsPath}`);
+            
+            // Send request to backend to index the workspace
+            const response = await fetch(`${this._backendUrl}/run`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: 'Index and analyze the current workspace structure. Scan all files and folders.',
+                    mode: 'chat',
+                    stream: false,
+                    workspace_dir: workspaceFolder.uri.fsPath
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json() as { content?: string };
+                console.log('✅ Workspace indexed successfully');
+                
+                // Optionally show a subtle notification
+                vscode.window.setStatusBarMessage('$(check) Workspace indexed by Helix AI', 3000);
+            } else {
+                console.error('Failed to index workspace:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error scanning workspace:', error);
+        }
     }
 
     private async _handleFileAttachment() {
@@ -125,7 +164,7 @@ export class HelixChatProvider implements vscode.WebviewViewProvider {
             }
         } catch (error) {
             console.error('Error reading file:', error);
-        hr
+        }
     }
 
     private _isTextFile(filePath: string): boolean {
@@ -183,6 +222,9 @@ export class HelixChatProvider implements vscode.WebviewViewProvider {
             // Get workspace folder for file operations
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
             const workspacePath = workspaceFolder?.uri.fsPath || '.';
+            
+            // Log workspace path for debugging
+            console.log(`📂 Workspace path being sent to backend: ${workspacePath}`);
             
             // Send request to backend with enhanced message and workspace path
             const response = await fetch(`${this._backendUrl}/run`, {

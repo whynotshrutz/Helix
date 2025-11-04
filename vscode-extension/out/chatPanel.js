@@ -16,6 +16,8 @@ class HelixChatProvider {
             localResourceRoots: [this._extensionUri]
         };
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+        // Automatically scan workspace when chat panel opens
+        this._scanWorkspaceOnOpen();
         // Handle messages from the webview
         webviewView.webview.onDidReceiveMessage(async (data) => {
             switch (data.type) {
@@ -39,6 +41,40 @@ class HelixChatProvider {
                     break;
             }
         });
+    }
+    async _scanWorkspaceOnOpen() {
+        var _a;
+        try {
+            const workspaceFolder = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0];
+            if (!workspaceFolder) {
+                console.log('No workspace folder found');
+                return;
+            }
+            console.log(`🔍 Scanning workspace: ${workspaceFolder.uri.fsPath}`);
+            // Send request to backend to index the workspace
+            const response = await fetch(`${this._backendUrl}/run`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: 'Index and analyze the current workspace structure. Scan all files and folders.',
+                    mode: 'chat',
+                    stream: false,
+                    workspace_dir: workspaceFolder.uri.fsPath
+                })
+            });
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ Workspace indexed successfully');
+                // Optionally show a subtle notification
+                vscode.window.setStatusBarMessage('$(check) Workspace indexed by Helix AI', 3000);
+            }
+            else {
+                console.error('Failed to index workspace:', response.statusText);
+            }
+        }
+        catch (error) {
+            console.error('Error scanning workspace:', error);
+        }
     }
     async _handleFileAttachment() {
         const options = {
@@ -152,6 +188,8 @@ class HelixChatProvider {
             // Get workspace folder for file operations
             const workspaceFolder = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0];
             const workspacePath = (workspaceFolder === null || workspaceFolder === void 0 ? void 0 : workspaceFolder.uri.fsPath) || '.';
+            // Log workspace path for debugging
+            console.log(`📂 Workspace path being sent to backend: ${workspacePath}`);
             // Send request to backend with enhanced message and workspace path
             const response = await fetch(`${this._backendUrl}/run`, {
                 method: 'POST',
@@ -510,7 +548,7 @@ class HelixChatProvider {
         <div class="empty-state">
             <div class="empty-state-icon">💬</div>
             <div class="empty-state-title">Welcome to Helix AI</div>
-            <div class="empty-state-subtitle">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>
+	    <div class="empty-state-subtitle">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>
         </div>
     </div>
     <div class="loading">
@@ -519,7 +557,7 @@ class HelixChatProvider {
     <div id="attachments-container"></div>
     <div id="input-container">
         <button id="attach-button" title="Attach files or folders">📎</button>
-        <textarea id="message-input" placeholder="Ask shruti anything" rows="1"></textarea>
+        <textarea id="message-input" placeholder="Ask Helix anything" rows="1"></textarea>
         <button id="send-button">Send</button>
     </div>
 
