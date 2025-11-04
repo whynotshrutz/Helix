@@ -1,5 +1,44 @@
 import * as vscode from 'vscode';
 import { HelixChatProvider } from './chatPanel';
+import * as https from 'https';
+import * as http from 'http';
+
+// Polyfill fetch for older VS Code versions
+if (typeof globalThis.fetch === 'undefined') {
+    (globalThis as any).fetch = async (url: string | URL, init?: any): Promise<any> => {
+        return new Promise((resolve, reject) => {
+            const urlString = url.toString();
+            const isHttps = urlString.startsWith('https:');
+            const client = isHttps ? https : http;
+            
+            const options: any = {
+                method: init?.method || 'GET',
+                headers: init?.headers || {},
+            };
+            
+            const req = client.request(urlString, options, (res) => {
+                let data = '';
+                res.on('data', (chunk) => { data += chunk; });
+                res.on('end', () => {
+                    resolve({
+                        ok: res.statusCode && res.statusCode >= 200 && res.statusCode < 300,
+                        status: res.statusCode,
+                        statusText: res.statusMessage,
+                        json: async () => JSON.parse(data),
+                        text: async () => data,
+                        headers: res.headers,
+                    });
+                });
+            });
+            
+            req.on('error', reject);
+            if (init?.body) {
+                req.write(typeof init.body === 'string' ? init.body : JSON.stringify(init.body));
+            }
+            req.end();
+        });
+    };
+}
 
 function getBackendUrl(): string {
     // Priority: VS Code settings > Environment variable > Default (Production)

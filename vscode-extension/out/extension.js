@@ -4,6 +4,41 @@ exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = require("vscode");
 const chatPanel_1 = require("./chatPanel");
+const https = require("https");
+const http = require("http");
+// Polyfill fetch for older VS Code versions
+if (typeof globalThis.fetch === 'undefined') {
+    globalThis.fetch = async (url, init) => {
+        return new Promise((resolve, reject) => {
+            const urlString = url.toString();
+            const isHttps = urlString.startsWith('https:');
+            const client = isHttps ? https : http;
+            const options = {
+                method: (init === null || init === void 0 ? void 0 : init.method) || 'GET',
+                headers: (init === null || init === void 0 ? void 0 : init.headers) || {},
+            };
+            const req = client.request(urlString, options, (res) => {
+                let data = '';
+                res.on('data', (chunk) => { data += chunk; });
+                res.on('end', () => {
+                    resolve({
+                        ok: res.statusCode && res.statusCode >= 200 && res.statusCode < 300,
+                        status: res.statusCode,
+                        statusText: res.statusMessage,
+                        json: async () => JSON.parse(data),
+                        text: async () => data,
+                        headers: res.headers,
+                    });
+                });
+            });
+            req.on('error', reject);
+            if (init === null || init === void 0 ? void 0 : init.body) {
+                req.write(typeof init.body === 'string' ? init.body : JSON.stringify(init.body));
+            }
+            req.end();
+        });
+    };
+}
 function getBackendUrl() {
     // Priority: VS Code settings > Environment variable > Default (Production)
     const config = vscode.workspace.getConfiguration('helix');
