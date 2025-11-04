@@ -22,6 +22,18 @@ try:
     from agno.knowledge.knowledge import Knowledge
     from agno.vectordb.chroma import ChromaDb
     from .nvidia_model_wrapper import NvidiaModelWrapper
+    AGNO_AVAILABLE = True
+    AGNO_ERROR = None
+except ImportError as e:
+    Agent = None
+    Nvidia = None
+    tool = None
+    SqliteDb = None
+    Knowledge = None
+    ChromaDb = None
+    NvidiaModelWrapper = None
+    AGNO_AVAILABLE = False
+    AGNO_ERROR = f"Agno SDK not installed. Install with: pip install agno>=0.8.0"
 except Exception as e:
     Agent = None
     Nvidia = None
@@ -30,6 +42,8 @@ except Exception as e:
     Knowledge = None
     ChromaDb = None
     NvidiaModelWrapper = None
+    AGNO_AVAILABLE = False
+    AGNO_ERROR = f"Agno SDK import failed: {str(e)}"
 
 from .tools import (
     file_reader_tool, 
@@ -2142,9 +2156,14 @@ def create_multi_agent_system(workspace_dir: str = ".") -> MultiAgentSystem:
         
     Returns:
         Initialized MultiAgentSystem
+        
+    Raises:
+        RuntimeError: If Agno SDK is not available
     """
-    if Agent is None:
-        raise RuntimeError("Agno SDK not installed. Install with: pip install agno")
+    if not AGNO_AVAILABLE:
+        error_msg = AGNO_ERROR or "Agno SDK not installed. Install with: pip install agno>=0.8.0"
+        print(f"❌ {error_msg}")
+        raise RuntimeError(error_msg)
     
     print("🚀 Initializing Multi-Agent System...")
     system = MultiAgentSystem(workspace_dir=workspace_dir)
