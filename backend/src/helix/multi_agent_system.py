@@ -15,12 +15,23 @@ from dotenv import load_dotenv
 load_dotenv()
 
 try:
-    from agno.agent import Agent
-    from agno.models.nvidia import Nvidia
-    from agno.tools import tool
-    from agno.db.sqlite import SqliteDb
-    from agno.knowledge.knowledge import Knowledge
-    from agno.vectordb.chroma import ChromaDb
+    # Try importing from phidata (new package name)
+    try:
+        from phi.agent import Agent
+        from phi.models.nvidia import Nvidia
+        from phi.tools import tool
+        from phi.storage.agent.sqlite import SqlAgentStorage as SqliteDb
+        from phi.knowledge.base import KnowledgeBase as Knowledge
+        from phi.vectordb.chroma import ChromaDb
+    except ImportError:
+        # Fallback to old agno package name
+        from agno.agent import Agent
+        from agno.models.nvidia import Nvidia
+        from agno.tools import tool
+        from agno.db.sqlite import SqliteDb
+        from agno.knowledge.knowledge import Knowledge
+        from agno.vectordb.chroma import ChromaDb
+    
     from .nvidia_model_wrapper import NvidiaModelWrapper
     AGNO_AVAILABLE = True
     AGNO_ERROR = None
@@ -33,7 +44,7 @@ except ImportError as e:
     ChromaDb = None
     NvidiaModelWrapper = None
     AGNO_AVAILABLE = False
-    AGNO_ERROR = f"Agno SDK not installed. Install with: pip install agno>=0.8.0"
+    AGNO_ERROR = f"Agno/Phi SDK not installed. Install with: pip install phidata>=2.0.0"
 except Exception as e:
     Agent = None
     Nvidia = None
@@ -43,7 +54,7 @@ except Exception as e:
     ChromaDb = None
     NvidiaModelWrapper = None
     AGNO_AVAILABLE = False
-    AGNO_ERROR = f"Agno SDK import failed: {str(e)}"
+    AGNO_ERROR = f"Agno/Phi SDK import failed: {str(e)}"
 
 from .tools import (
     file_reader_tool, 

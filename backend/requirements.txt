@@ -1,5 +1,6 @@
 # Core dependencies
-agno>=0.8.0
+# NOTE: Agno SDK is now called 'phidata'
+phidata>=2.0.0
 fastapi>=0.95
 uvicorn[standard]>=0.22
 httpx>=0.24

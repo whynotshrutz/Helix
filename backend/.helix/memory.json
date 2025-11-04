@@ -1,0 +1,33 @@
+{
+  "conversation": [
+    {
+      "role": "user",
+      "content": "hi",
+      "timestamp": "2025-11-04T22:57:00.152405",
+      "metadata": {
+        "source": "chat"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "Hey! How can I help you today? Just let me know what you need - code analysis, file operations, research, or Git help.",
+      "timestamp": "2025-11-04T22:57:00.157576",
+      "metadata": {
+        "agent": "orchestrator",
+        "route": "none"
+      }
+    }
+  ],
+  "facts": [],
+  "project_context": {
+    "languages": [],
+    "frameworks": [],
+    "key_files": [],
+    "description": ""
+  },
+  "metadata": {
+    "created_at": "2025-11-04T22:56:25.553236",
+    "last_updated": "2025-11-04T22:57:00.157576",
+    "version": "1.0"
+  }
+}

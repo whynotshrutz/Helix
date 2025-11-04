@@ -4,7 +4,11 @@ This wrapper prevents the 'string_too_short' error by filtering out
 empty messages before they reach the NVIDIA API.
 """
 from typing import List, Dict, Any, Optional
-from agno.models.nvidia import Nvidia
+
+try:
+    from phi.models.nvidia import Nvidia
+except ImportError:
+    from agno.models.nvidia import Nvidia
 
 
 class NvidiaModelWrapper(Nvidia):
