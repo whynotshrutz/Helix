@@ -15,7 +15,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 try:
-    # Try importing from phidata (new package name)
+    # Import from agno package (working on EC2)
+    from agno.agent import Agent
+    from agno.models.nvidia import Nvidia
+    from agno.tools import tool
+    from agno.db.sqlite import SqliteDb
+    from agno.knowledge.knowledge import Knowledge
+    from agno.vectordb.chroma import ChromaDb
+    from .nvidia_model_wrapper import NvidiaModelWrapper
+    AGNO_AVAILABLE = True
+    AGNO_ERROR = None
+    print("✅ Agno SDK imported successfully")
+except ImportError as e:
+    # Try alternative package names
     try:
         from phi.agent import Agent
         from phi.models.nvidia import Nvidia
@@ -23,28 +35,21 @@ try:
         from phi.storage.agent.sqlite import SqlAgentStorage as SqliteDb
         from phi.knowledge.base import KnowledgeBase as Knowledge
         from phi.vectordb.chroma import ChromaDb
-    except ImportError:
-        # Fallback to old agno package name
-        from agno.agent import Agent
-        from agno.models.nvidia import Nvidia
-        from agno.tools import tool
-        from agno.db.sqlite import SqliteDb
-        from agno.knowledge.knowledge import Knowledge
-        from agno.vectordb.chroma import ChromaDb
-    
-    from .nvidia_model_wrapper import NvidiaModelWrapper
-    AGNO_AVAILABLE = True
-    AGNO_ERROR = None
-except ImportError as e:
-    Agent = None
-    Nvidia = None
-    tool = None
-    SqliteDb = None
-    Knowledge = None
-    ChromaDb = None
-    NvidiaModelWrapper = None
-    AGNO_AVAILABLE = False
-    AGNO_ERROR = f"Agno/Phi SDK not installed. Install with: pip install phidata>=2.0.0"
+        from .nvidia_model_wrapper import NvidiaModelWrapper
+        AGNO_AVAILABLE = True
+        AGNO_ERROR = None
+        print("✅ Phi SDK imported successfully")
+    except ImportError as e2:
+        Agent = None
+        Nvidia = None
+        tool = None
+        SqliteDb = None
+        Knowledge = None
+        ChromaDb = None
+        NvidiaModelWrapper = None
+        AGNO_AVAILABLE = False
+        AGNO_ERROR = f"Agno/Phi SDK not installed. Error: {str(e)}\nInstall with: pip install agno"
+        print(f"❌ Import error: {str(e)}")
 except Exception as e:
     Agent = None
     Nvidia = None
@@ -55,6 +60,7 @@ except Exception as e:
     NvidiaModelWrapper = None
     AGNO_AVAILABLE = False
     AGNO_ERROR = f"Agno/Phi SDK import failed: {str(e)}"
+    print(f"❌ Exception during import: {str(e)}")
 
 from .tools import (
     file_reader_tool, 
