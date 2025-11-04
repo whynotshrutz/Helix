@@ -125,7 +125,7 @@ export class HelixChatProvider implements vscode.WebviewViewProvider {
             }
         } catch (error) {
             console.error('Error reading file:', error);
-        }
+        hr
     }
 
     private _isTextFile(filePath: string): boolean {
@@ -559,7 +559,7 @@ export class HelixChatProvider implements vscode.WebviewViewProvider {
         <div class="empty-state">
             <div class="empty-state-icon">💬</div>
             <div class="empty-state-title">Welcome to Helix AI</div>
-            <div class="empty-state-subtitle">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>
+	    <div class="empty-state-subtitle">Ask me anything about your code!<br>Drag & drop files/folders to attach them.</div>
         </div>
     </div>
     <div class="loading">
@@ -568,7 +568,7 @@ export class HelixChatProvider implements vscode.WebviewViewProvider {
     <div id="attachments-container"></div>
     <div id="input-container">
         <button id="attach-button" title="Attach files or folders">📎</button>
-        <textarea id="message-input" placeholder="Ask shruti anything" rows="1"></textarea>
+        <textarea id="message-input" placeholder="Ask Helix anything" rows="1"></textarea>
         <button id="send-button">Send</button>
     </div>
 
